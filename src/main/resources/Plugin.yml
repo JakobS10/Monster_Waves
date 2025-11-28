@@ -1,0 +1,98 @@
+name: ChallengePlugin
+version: 1.0.0
+main: de.challengeplugin.ChallengePlugin
+api-version: '1.21'
+author: YourName
+description: Challenge-Plugin mit Farming, Boss-Setup und Wave-Kämpfen
+
+# WorldEdit als Abhängigkeit (für Schematics)
+depend: [WorldEdit]
+softdepend: [FastAsyncWorldEdit]
+
+commands:
+  challenge:
+    description: Startet eine Challenge
+    usage: /challenge start <FarmZeit-Sekunden> <Boss-Spieler>
+    permission: challenge.start
+    aliases: [ch]
+
+  aufgeben:
+    description: Gibt die aktuelle Challenge auf
+    usage: /aufgeben
+    permission: challenge.forfeit
+    aliases: [forfeit, surrender]
+
+  spectate:
+    description: Schau anderen Spielern zu
+    usage: /spectate [Spieler]
+    permission: challenge.spectate
+    aliases: [spec, watch]
+
+  timer:
+    description: Zeigt den aktuellen Timer-Status
+    usage: /timer
+    permission: challenge.timer.view
+
+  timerstart:
+    description: Startet den Timer
+    usage: /timerstart [Tage Stunden Minuten Sekunden]
+    permission: challenge.timer.admin
+
+  timerpause:
+    description: Pausiert den Timer
+    usage: /timerpause
+    permission: challenge.timer.admin
+
+  timerresume:
+    description: Setzt den Timer fort
+    usage: /timerresume
+    permission: challenge.timer.admin
+
+  timerreset:
+    description: Setzt den Timer zurück
+    usage: /timerreset
+    permission: challenge.timer.admin
+
+  timertoggle:
+    description: Schaltet ActionBar-Anzeige um
+    usage: /timertoggle
+    permission: challenge.timer.toggle
+
+permissions:
+  challenge.*:
+    description: Alle Challenge-Permissions
+    default: op
+    children:
+      challenge.start: true
+      challenge.admin: true
+      challenge.forfeit: true
+      challenge.spectate: true
+      challenge.timer.admin: true
+
+  challenge.start:
+    description: Challenge starten
+    default: op
+
+  challenge.admin:
+    description: Admin-Befehle nutzen
+    default: op
+
+  challenge.forfeit:
+    description: Challenge aufgeben
+    default: true
+
+  challenge.spectate:
+    description: Spectator-Modus nutzen
+    default: true
+
+  challenge.timer.view:
+    description: Timer ansehen
+    default: true
+
+  challenge.timer.admin:
+    description: Timer steuern
+    default: op
+
+  challenge.timer.toggle:
+    description: ActionBar umschalten
+    default: true
