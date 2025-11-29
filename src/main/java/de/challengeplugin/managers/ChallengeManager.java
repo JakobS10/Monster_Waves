@@ -95,18 +95,11 @@ public class ChallengeManager {
     /**
      * Boss definiert Waves für alle Spieler
      */
+    /**
+     * Ändere die originale startWaveSetup-Methode zu:
+     */
     private void startWaveSetup(Player bossPlayer) {
-        // Liste aller Spieler (ohne Boss wenn er nicht mitmacht)
-        List<UUID> playersToSetup = new ArrayList<>(activeChallenge.getParticipants());
-        if (!activeChallenge.isBossParticipates()) {
-            playersToSetup.remove(bossPlayer.getUniqueId());
-        }
-
-        // Starte interaktiven Setup-Prozess
-        bossSetupManager.startWaveSetup(bossPlayer, playersToSetup, () -> {
-            // Setup abgeschlossen -> Starte Farmphase
-            startFarmingPhase();
-        });
+        bossSetupManager.startWaveSetup(bossPlayer);
     }
 
     /**
@@ -157,33 +150,45 @@ public class ChallengeManager {
     }
 
     /**
-     * Combat-Phase: Spieler kämpfen in Arenen
+     * Combat-Phase: Teams kämpfen in Arenen
      */
     private void startCombatPhase() {
         activeChallenge.setCurrentPhase(Challenge.ChallengePhase.COMBAT);
         activeChallenge.setPhaseStartTick(plugin.getDataManager().getTimerTicks());
 
-        // Erstelle Arenen für alle Spieler
-        arenaManager.createArenas(activeChallenge);
+        // Erstelle Arenen für alle TEAMS
+        arenaManager.createArenasForTeams(activeChallenge);
 
-        // Teleportiere Spieler in Arenen und starte Waves
-        for (UUID playerId : activeChallenge.getParticipants()) {
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null) {
-                // Speichere Inventar
-                PlayerChallengeData data = activeChallenge.getPlayerData().get(playerId);
-                data.backupInventory(player);
+        // Teleportiere Teams in Arenen und starte Waves
+        for (Map.Entry<UUID, List<UUID>> entry : activeChallenge.getTeams().entrySet()) {
+            UUID teamId = entry.getKey();
+            List<UUID> teamMembers = entry.getValue();
 
-                // Teleportiere in Arena
-                ArenaInstance arena = arenaManager.getArenaForPlayer(playerId);
-                player.teleport(arena.getSpawnPoint());
-                player.setGameMode(GameMode.SURVIVAL);
+            // Hole Arena für dieses Team
+            ArenaInstance arena = arenaManager.getArenaForTeam(teamId);
+            if (arena == null) continue;
 
-                player.sendMessage("§c§l=== KAMPFPHASE BEGINNT ===");
+            // Teleportiere alle Team-Mitglieder
+            Location spawnPoint = arena.getSpawnPoint();
+            for (UUID playerId : teamMembers) {
+                Player player = Bukkit.getPlayer(playerId);
+                if (player != null) {
+                    // Speichere Inventar
+                    PlayerChallengeData data = activeChallenge.getPlayerData().get(playerId);
+                    data.backupInventory(player);
+                    data.setCombatStartTick(plugin.getDataManager().getTimerTicks());
 
-                // Starte erste Wave
-                waveManager.startWave(player, 0);
+                    // Teleportiere
+                    player.teleport(spawnPoint);
+                    player.setGameMode(GameMode.SURVIVAL);
+
+                    player.sendMessage("§c§l=== KAMPFPHASE BEGINNT ===");
+                    player.sendMessage("§7Dein Team: §e" + getTeamMemberNames(teamMembers));
+                }
             }
+
+            // Starte erste Wave für dieses Team
+            waveManager.startWaveForTeam(teamId, 0);
         }
     }
 
@@ -287,4 +292,56 @@ public class ChallengeManager {
     public boolean isChallengeActive() {
         return activeChallenge != null;
     }
+
+    public ArenaManager getArenaManager() {
+        return arenaManager;
+    }
+
+    public WaveManager getWaveManager() {
+        return waveManager;
+    }
+
+    public BossSetupManager getBossSetupManager() {
+        return bossSetupManager;
+    }
+
+    public StatisticsManager getStatisticsManager() {
+        return statisticsManager;
+    }
+
+    public SpectatorManager getSpectatorManager() {
+        return spectatorManager;
+    }
+
+    // Dummy-Methoden für TimerManager-Kompatibilität
+    public long getChallengeDurationTicks() {
+        return activeChallenge != null ? activeChallenge.getFarmDurationTicks() : 0;
+    }
+
+    public void completed() {
+        if (activeChallenge != null) {
+            endChallenge();
+        }
+    }
+
+    /**
+     * Hilfsmethode: Team-Namen formatieren
+     */
+    private String getTeamMemberNames(List<UUID> members) {
+        List<String> names = new ArrayList<>();
+        for (UUID id : members) {
+            Player p = Bukkit.getPlayer(id);
+            if (p != null) names.add(p.getName());
+        }
+        return String.join(" & ", names);
+    }
+
+    /**
+     * PUBLIC Wrapper für startFarmingPhase
+     */
+    public void startFarmingPhasePublic() {
+        startFarmingPhase();
+    }
+
+
 }

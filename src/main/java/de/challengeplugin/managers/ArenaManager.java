@@ -180,12 +180,6 @@ public class ArenaManager {
         // Siehe ArenaProtectionListener
     }
 
-    /**
-     * Gibt Arena für Spieler zurück
-     */
-    public ArenaInstance getArenaForPlayer(UUID playerId) {
-        return arenaInstances.get(playerId);
-    }
 
     /**
      * Prüft ob Location in einer Arena ist
@@ -216,5 +210,47 @@ public class ArenaManager {
         // Optional: Setze Arena-Bereiche auf Luft zurück
         // Oder lasse sie stehen für manuelles Cleanup
         arenaInstances.clear();
+    }
+
+    /**
+     * NEU: Erstellt Arenen für alle Teams
+     */
+    public void createArenasForTeams(Challenge challenge) {
+        World world = Bukkit.getWorlds().get(0);
+        int arenaIndex = 0;
+
+        for (UUID teamId : challenge.getTeams().keySet()) {
+            // Berechne Arena-Position
+            int x = arenaIndex * ARENA_SPACING;
+            int z = 0;
+            Location centerLoc = new Location(world, x, 100, z);
+
+            // Erstelle Arena-Instanz
+            ArenaInstance arena = createArenaInstance(teamId, centerLoc);
+            arenaInstances.put(teamId, arena);
+            challenge.getTeamArenaMapping().put(teamId, arena.getInstanceId());
+
+            arenaIndex++;
+        }
+
+        plugin.getLogger().info("Erstellt " + arenaIndex + " Arenen für Teams");
+    }
+
+    /**
+     * NEU: Gibt Arena für Team zurück
+     */
+    public ArenaInstance getArenaForTeam(UUID teamId) {
+        return arenaInstances.get(teamId);
+    }
+
+    /**
+     * Gibt Arena für Spieler zurück (findet über Team)
+     */
+    public ArenaInstance getArenaForPlayer(UUID playerId) {
+        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
+        if (challenge == null) return null;
+
+        UUID teamId = challenge.getTeamOfPlayer(playerId);
+        return getArenaForTeam(teamId);
     }
 }

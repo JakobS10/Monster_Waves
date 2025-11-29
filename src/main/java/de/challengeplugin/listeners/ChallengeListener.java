@@ -3,6 +3,7 @@ package de.challengeplugin.listeners;
 import de.challengeplugin.ChallengePlugin;
 import de.challengeplugin.models.Challenge;
 import de.challengeplugin.models.PlayerChallengeData;
+import de.challengeplugin.models.ArenaInstance;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;

@@ -4,8 +4,9 @@ import de.challengeplugin.ChallengePlugin;
 import org.bukkit.Bukkit;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
-
+import java.util.ArrayList;
 import java.util.List;
+
 
 /**
  * Hauptbefehl: /challenge start <farmTimeSeconds> <bossPlayer>

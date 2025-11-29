@@ -36,16 +36,17 @@ public class WaveManager {
      * @param player Der Spieler
      * @param waveIndex Wave-Index (0, 1 oder 2)
      */
-    public void startWave(Player player, int waveIndex) {
-        UUID playerId = player.getUniqueId();
+    /**
+     * NEU: Startet eine Wave für ein ganzes Team
+     */
+    public void startWaveForTeam(UUID teamId, int waveIndex) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
-
         if (challenge == null) return;
 
-        // Hole Wave-Daten
-        List<Wave> waves = challenge.getPlayerWaves().get(playerId);
+        // Hole Wave-Daten für dieses Team
+        List<Wave> waves = challenge.getTeamWaves().get(teamId);
         if (waves == null || waveIndex >= waves.size()) {
-            plugin.getLogger().warning("Keine Wave-Daten für " + player.getName());
+            plugin.getLogger().warning("Keine Wave-Daten für Team " + teamId);
             return;
         }
 
@@ -53,27 +54,36 @@ public class WaveManager {
 
         // Wenn nicht erste Wave, starte Countdown
         if (waveIndex > 0) {
-            startWaveCountdown(player, wave, 30); // 30 Sekunden Countdown
+            startWaveCountdownForTeam(teamId, wave, 30);
         } else {
-            // Erste Wave sofort starten
-            spawnWaveMobs(player, wave);
+            spawnWaveMobsForTeam(teamId, wave);
         }
     }
 
     /**
-     * Startet Countdown zwischen Waves
+     * NEU: Countdown für Team
      */
-    private void startWaveCountdown(Player player, Wave wave, int seconds) {
-        UUID playerId = player.getUniqueId();
+    private void startWaveCountdownForTeam(UUID teamId, Wave wave, int seconds) {
+        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
+        List<UUID> teamMembers = challenge.getTeamMembers(teamId);
 
-        // Erstelle Bossbar für Countdown
-        BossBar bossbar = createOrGetBossbar(player);
-        bossbar.setTitle("§eWave " + wave.getWaveNumber() + " startet in...");
-        bossbar.setColor(BarColor.YELLOW);
-        bossbar.setProgress(1.0);
+        // Erstelle Bossbar für alle Team-Mitglieder
+        BossBar bossbar = Bukkit.createBossBar(
+                "§eWave " + wave.getWaveNumber() + " startet in...",
+                BarColor.YELLOW,
+                BarStyle.SOLID
+        );
 
-        player.sendMessage("§e§l=== Wave " + wave.getWaveNumber() + " ===");
-        player.sendMessage("§7Vorbereitung: §e" + seconds + " Sekunden");
+        for (UUID memberId : teamMembers) {
+            Player player = Bukkit.getPlayer(memberId);
+            if (player != null) {
+                bossbar.addPlayer(player);
+                playerBossbars.put(memberId, bossbar);
+
+                player.sendMessage("§e§l=== Wave " + wave.getWaveNumber() + " ===");
+                player.sendMessage("§7Vorbereitung: §e" + seconds + " Sekunden");
+            }
+        }
 
         // Countdown-Task
         BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
@@ -82,26 +92,189 @@ public class WaveManager {
             @Override
             public void run() {
                 if (remaining <= 0) {
-                    // Countdown beendet, starte Wave
-                    countdownTasks.remove(playerId);
-                    spawnWaveMobs(player, wave);
+                    countdownTasks.remove(teamId);
+                    spawnWaveMobsForTeam(teamId, wave);
                     return;
                 }
 
-                // Update Bossbar
                 bossbar.setProgress((double) remaining / seconds);
                 bossbar.setTitle("§eWave " + wave.getWaveNumber() + " startet in §6" + remaining + "s");
 
-                // Sound bei 10, 5, 3, 2, 1
+                // Sound für alle Team-Mitglieder
                 if (remaining <= 10 && remaining <= 5 || remaining <= 3) {
-                    player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.0f);
+                    for (UUID memberId : teamMembers) {
+                        Player player = Bukkit.getPlayer(memberId);
+                        if (player != null) {
+                            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_HAT, 1.0f, 1.0f);
+                        }
+                    }
                 }
 
                 remaining--;
             }
-        }, 0L, 20L); // Jede Sekunde
+        }, 0L, 20L);
 
-        countdownTasks.put(playerId, task);
+        countdownTasks.put(teamId, task);
+    }
+    /**
+
+     NEU: Spawnt Mobs für Team
+     */
+    private void spawnWaveMobsForTeam(UUID teamId, Wave wave) {
+        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
+        List<UUID> teamMembers = challenge.getTeamMembers(teamId);
+// Hole Arena
+        ArenaInstance arena = plugin.getChallengeManager().getArenaManager().getArenaForTeam(teamId);
+        if (arena == null) return;
+// Erstelle Set für Mob-Tracking (PRO TEAM, nicht pro Spieler!)
+        Set<UUID> mobIds = new HashSet<>();
+        playerMobs.put(teamId, mobIds); // Speichere unter Team-ID!
+// Spawne alle Mobs
+        Location spawnLoc = arena.getSpawnPoint().clone().add(0, 2, 0);
+// Wähle zufälliges Team-Mitglied als initiales Aggro-Target
+        Player randomMember = null;
+        for (UUID memberId : teamMembers) {
+            randomMember = Bukkit.getPlayer(memberId);
+            if (randomMember != null) break;
+        }
+        for (EntityType mobType : wave.getMobs()) {
+            Entity entity = randomMember.getWorld().spawnEntity(spawnLoc, mobType);
+            if (entity instanceof Mob) {
+                Mob mob = (Mob) entity;
+
+                // Setze Aggro auf zufälliges Team-Mitglied
+                if (randomMember != null) {
+                    mob.setTarget(randomMember);
+                }
+                mob.setRemoveWhenFarAway(false);
+                mob.setCanPickupItems(false);
+                mob.setLootTable(null);
+
+                mobIds.add(mob.getUniqueId());
+                arena.getSpawnedMobs().add(mob.getUniqueId());
+            }
+        }
+// Update Bossbar für alle Team-Mitglieder
+        for (UUID memberId : teamMembers) {
+            Player player = Bukkit.getPlayer(memberId);
+            if (player != null) {
+                updateBossbarForPlayer(player, wave, mobIds.size());
+                player.sendMessage("§c§lWave " + wave.getWaveNumber() + " gestartet!");
+                player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.8f);
+                // Starte Wave-Stats
+                PlayerChallengeData data = challenge.getPlayerData().get(memberId);
+                if (data != null) {
+                    data.getWaveStats().put(wave.getWaveNumber() - 1, new PlayerChallengeData.WaveStats());
+                    data.getWaveStats().get(wave.getWaveNumber() - 1).startTick =
+                            plugin.getDataManager().getTimerTicks();
+                }
+            }
+        }
+    }
+
+    /**
+
+     ANGEPASST: Mob stirbt (Team-basiert)
+     */
+    public void onMobDeath(UUID killerId, UUID mobId) {
+        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
+        if (challenge == null) return;
+// Finde Team des Killers
+        UUID teamId = challenge.getTeamOfPlayer(killerId);
+        if (teamId == null) return;
+        Set<UUID> mobs = playerMobs.get(teamId); // Team-Mobs, nicht Spieler-Mobs!
+        if (mobs == null) return;
+        mobs.remove(mobId);
+// Update für alle Team-Mitglieder
+        List<UUID> teamMembers = challenge.getTeamMembers(teamId);
+        for (UUID memberId : teamMembers) {
+            Player player = Bukkit.getPlayer(memberId);
+            if (player != null) {
+                PlayerChallengeData data = challenge.getPlayerData().get(memberId);
+                if (data != null) {
+                    int currentWave = data.getCurrentWaveIndex();
+                    if (data.getWaveStats().containsKey(currentWave)) {
+                        data.getWaveStats().get(currentWave).mobsKilled++;
+                    }
+                }
+                // Update Bossbar
+                List<Wave> waves = challenge.getTeamWaves().get(teamId);
+                if (waves != null && data.getCurrentWaveIndex() < waves.size()) {
+                    Wave currentWave = waves.get(data.getCurrentWaveIndex());
+                    updateBossbarForPlayer(player, currentWave, mobs.size());
+                }
+            }
+        }
+// Prüfe ob Wave abgeschlossen
+        if (mobs.isEmpty()) {
+            onWaveCompletedForTeam(teamId);
+        }
+    }
+
+    /**
+
+     NEU: Wave für Team abgeschlossen
+     */
+    private void onWaveCompletedForTeam(UUID teamId) {
+        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
+        List<UUID> teamMembers = challenge.getTeamMembers(teamId);
+// Hole aktuellen Wave-Index (von erstem Team-Mitglied)
+        int waveIndex = 0;
+        for (UUID memberId : teamMembers) {
+            PlayerChallengeData data = challenge.getPlayerData().get(memberId);
+            if (data != null) {
+                waveIndex = data.getCurrentWaveIndex();
+                break;
+            }
+        }
+// Update für alle Team-Mitglieder
+        for (UUID memberId : teamMembers) {
+            Player player = Bukkit.getPlayer(memberId);
+            if (player != null) {
+                PlayerChallengeData data = challenge.getPlayerData().get(memberId);
+                if (data != null) {
+                    data.getWaveStats().get(waveIndex).endTick = plugin.getDataManager().getTimerTicks();
+                    data.setCurrentWaveIndex(waveIndex + 1);
+                }
+                player.sendMessage("§a§l✓ Wave " + (waveIndex + 1) + " abgeschlossen!");
+                player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+            }
+        }
+// Nächste Wave oder fertig?
+        if (waveIndex + 1 < 3) {
+            startWaveForTeam(teamId, waveIndex + 1);
+        } else {
+// Team hat alle Waves geschafft!
+            for (UUID memberId : teamMembers) {
+                plugin.getChallengeManager().onPlayerCompleted(memberId);
+                BossBar bar = playerBossbars.remove(memberId);
+                if (bar != null) {
+                    bar.removeAll();
+                }
+            }
+        }
+    }
+
+    /**
+
+     Hilfsmethode: Update Bossbar für einzelnen Spieler
+     */
+    private void updateBossbarForPlayer(Player player, Wave wave, int remainingMobs) {
+        BossBar bar = playerBossbars.get(player.getUniqueId());
+        if (bar == null) {
+            bar = Bukkit.createBossBar(
+                    "Wave",
+                    BarColor.RED,
+                    BarStyle.SOLID
+            );
+            bar.addPlayer(player);
+            playerBossbars.put(player.getUniqueId(), bar);
+        }
+        int totalMobs = wave.getTotalMobCount();
+        double progress = (double) remainingMobs / totalMobs;
+        bar.setTitle("§cWave " + wave.getWaveNumber() + " §7- §e" + remainingMobs + "§7/§e" + totalMobs + " Mobs");
+        bar.setProgress(Math.max(0.01, progress));
+        bar.setColor(BarColor.RED);
     }
 
     /**
@@ -161,69 +334,6 @@ public class WaveManager {
         player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 1.0f, 0.8f);
     }
 
-    /**
-     * Wird aufgerufen wenn ein Mob stirbt
-     */
-    public void onMobDeath(UUID playerId, UUID mobId) {
-        Set<UUID> mobs = playerMobs.get(playerId);
-        if (mobs == null) return;
-
-        mobs.remove(mobId);
-
-        Player player = Bukkit.getPlayer(playerId);
-        if (player == null) return;
-
-        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
-        PlayerChallengeData data = challenge.getPlayerData().get(playerId);
-
-        // Update Stats
-        int currentWave = data.getCurrentWaveIndex();
-        if (data.getWaveStats().containsKey(currentWave)) {
-            data.getWaveStats().get(currentWave).mobsKilled++;
-        }
-
-        // Update Bossbar
-        List<Wave> waves = challenge.getPlayerWaves().get(playerId);
-        Wave currentWaveObj = waves.get(currentWave);
-        updateBossbar(player, currentWaveObj, mobs.size());
-
-        // Prüfe ob Wave abgeschlossen
-        if (mobs.isEmpty()) {
-            onWaveCompleted(player, currentWave);
-        }
-    }
-
-    /**
-     * Wird aufgerufen wenn eine Wave abgeschlossen ist
-     */
-    private void onWaveCompleted(Player player, int waveIndex) {
-        UUID playerId = player.getUniqueId();
-        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
-        PlayerChallengeData data = challenge.getPlayerData().get(playerId);
-
-        // Speichere Wave-End-Zeit
-        data.getWaveStats().get(waveIndex).endTick = plugin.getDataManager().getTimerTicks();
-
-        player.sendMessage("§a§l✓ Wave " + (waveIndex + 1) + " abgeschlossen!");
-        player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
-
-        // Nächste Wave oder fertig?
-        data.setCurrentWaveIndex(waveIndex + 1);
-
-        if (waveIndex + 1 < 3) {
-            // Nächste Wave starten
-            startWave(player, waveIndex + 1);
-        } else {
-            // Alle Waves geschafft!
-            plugin.getChallengeManager().onPlayerCompleted(playerId);
-
-            // Entferne Bossbar
-            BossBar bar = playerBossbars.remove(playerId);
-            if (bar != null) {
-                bar.removeAll();
-            }
-        }
-    }
 
     /**
      * Erstellt oder holt Bossbar für Spieler

@@ -8,14 +8,18 @@ import java.util.*;
  */
 public class Wave {
 
-    private final int waveNumber;              // 1, 2 oder 3
-    private final List<EntityType> mobs;       // Mob-Typen aus Spawn Eggs
-    private final UUID targetPlayerId;         // Für wen ist diese Wave
+    private int waveNumber;
+    private List<EntityType> mobs;
+    private UUID targetTeamId; // GEÄNDERT: von targetPlayerId zu targetTeamId
 
     // Konstruktor
-    public Wave(int waveNumber, UUID targetPlayerId) {
+    public Wave() {
+        this.mobs = new ArrayList<>();
+    }
+
+    public Wave(int waveNumber, UUID targetTeamId) {
         this.waveNumber = waveNumber;
-        this.targetPlayerId = targetPlayerId;
+        this.targetTeamId = targetTeamId;
         this.mobs = new ArrayList<>();
     }
 
@@ -27,5 +31,29 @@ public class Wave {
         return mobs.size();
     }
 
-    // Getter...
+    // === GETTER UND SETTER ===
+
+    public int getWaveNumber() {
+        return waveNumber;
+    }
+
+    public void setWaveNumber(int waveNumber) {
+        this.waveNumber = waveNumber;
+    }
+
+    public List<EntityType> getMobs() {
+        return mobs;
+    }
+
+    public void setMobs(List<EntityType> mobs) {
+        this.mobs = mobs;
+    }
+
+    public UUID getTargetTeamId() {
+        return targetTeamId;
+    }
+
+    public void setTargetTeamId(UUID targetTeamId) {
+        this.targetTeamId = targetTeamId;
+    }
 }

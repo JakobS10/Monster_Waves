@@ -122,6 +122,7 @@ public class SchematicLoader {
         if (clipboard == null) return new int[]{0, 0, 0};
 
         BlockVector3 dimensions = clipboard.getDimensions();
-        return new int[]{dimensions.getBlockX(), dimensions.getBlockY(), dimensions.getBlockZ()};
+        // Verwende die nicht-veralteten Methoden: x(), y(), z()
+        return new int[]{dimensions.x(), dimensions.y(), dimensions.z()};
     }
 }

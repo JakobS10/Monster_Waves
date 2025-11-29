@@ -2,6 +2,7 @@ package de.challengeplugin.listeners;
 
 import de.challengeplugin.ChallengePlugin;
 import de.challengeplugin.managers.BossSetupManager;
+import de.challengeplugin.models.Challenge;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -31,6 +32,12 @@ public class SetupGUIListener implements Listener {
         Player player = (Player) event.getWhoClicked();
 
         String title = event.getView().getTitle();
+
+        // NEU: Team-Mode-GUI
+        if (title.equals("§6Team-Modus wählen")) {
+            event.setCancelled(true);
+            handleTeamModeGUI(player, event.getSlot());
+        }
 
         // Dimension-GUI
         if (title.equals("§6Welten-Zugang")) {
@@ -201,5 +208,31 @@ public class SetupGUIListener implements Listener {
 
         event.setCancelled(true);
         plugin.getChallengeManager().getSpectatorManager().openSpectatorGUI(player);
+    }
+
+    /**
+     * NEU: Handhabt Team-Mode-GUI-Klicks
+     */
+    private void handleTeamModeGUI(Player player, int slot) {
+        BossSetupManager.SetupContext context = plugin.getChallengeManager()
+                .getBossSetupManager().getSetupContext(player.getUniqueId());
+
+        if (context == null) return;
+
+        Challenge.TeamMode selectedMode = null;
+
+        if (slot == 11) { // Solo
+            selectedMode = Challenge.TeamMode.SOLO;
+        } else if (slot == 13) { // Duo
+            selectedMode = Challenge.TeamMode.DUO;
+        } else if (slot == 15) { // Trio
+            selectedMode = Challenge.TeamMode.TRIO;
+        } else {
+            return;
+        }
+
+        player.closeInventory();
+        player.sendMessage("§aTeam-Modus gewählt: §e" + selectedMode.name());
+        context.teamModeCallback.accept(selectedMode);
     }
 }
