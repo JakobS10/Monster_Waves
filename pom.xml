@@ -20,13 +20,10 @@
     </properties>
 
     <repositories>
-        <!-- Paper Repository -->
         <repository>
             <id>papermc</id>
             <url>https://repo.papermc.io/repository/maven-public/</url>
         </repository>
-
-        <!-- WorldEdit Repository -->
         <repository>
             <id>sk89q-repo</id>
             <url>https://maven.enginehub.org/repo/</url>
@@ -34,7 +31,6 @@
     </repositories>
 
     <dependencies>
-        <!-- Paper API -->
         <dependency>
             <groupId>io.papermc.paper</groupId>
             <artifactId>paper-api</artifactId>
@@ -42,7 +38,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- WorldEdit API -->
         <dependency>
             <groupId>com.sk89q.worldedit</groupId>
             <artifactId>worldedit-bukkit</artifactId>
@@ -50,7 +45,6 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- WorldEdit Core -->
         <dependency>
             <groupId>com.sk89q.worldedit</groupId>
             <artifactId>worldedit-core</artifactId>
@@ -58,6 +52,7 @@
             <scope>provided</scope>
         </dependency>
     </dependencies>
+
     <build>
         <finalName>${project.name}-${project.version}</finalName>
         <defaultGoal>clean package</defaultGoal>
@@ -70,6 +65,7 @@
         </resources>
 
         <plugins>
+            <!-- Compiler Plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
@@ -80,19 +76,6 @@
                 </configuration>
             </plugin>
 
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-shade-plugin</artifactId>
-                <version>3.5.0</version>
-                <executions>
-                    <execution>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
         </plugins>
     </build>
 </project>

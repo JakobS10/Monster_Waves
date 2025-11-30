@@ -2,7 +2,7 @@ name: ChallengePlugin
 version: 1.0.0
 main: de.challengeplugin.ChallengePlugin
 api-version: '1.21'
-author: YourName
+author: Der allerechte Intäligäns
 description: Challenge-Plugin mit Farming, Boss-Setup und Wave-Kämpfen
 
 # WorldEdit als Abhängigkeit (für Schematics)
