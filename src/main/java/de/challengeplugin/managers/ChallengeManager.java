@@ -69,8 +69,8 @@ public class ChallengeManager {
     private void startSetupPhase(Player bossPlayer) {
         activeChallenge.setCurrentPhase(Challenge.ChallengePhase.SETUP);
 
-        // Frage Boss nach Einstellungen
-        askBossSettings(bossPlayer);
+        // Starte kompletten Setup-Prozess via BossSetupManager
+        bossSetupManager.startCompleteSetup(bossPlayer);
     }
 
     /**
@@ -343,5 +343,82 @@ public class ChallengeManager {
         startFarmingPhase();
     }
 
+
+    /**
+     * Bricht aktive Challenge ab und räumt auf
+     */
+    public void cancelChallenge() {
+        if (activeChallenge == null) {
+            return;
+        }
+
+        Bukkit.getLogger().info("[ChallengeManager] Challenge wird abgebrochen...");
+
+        // Stoppe Timer
+        plugin.getDataManager().pauseTimer();
+
+        // Cleanup alle Spieler
+        for (UUID playerId : activeChallenge.getParticipants()) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                // Setze GameMode zurück
+                player.setGameMode(GameMode.SURVIVAL);
+
+                // Restore Inventar falls gesichert
+                if (activeChallenge.getPlayerData().containsKey(playerId)) {
+                    PlayerChallengeData data = activeChallenge.getPlayerData().get(playerId);
+                    data.restoreInventory(player);
+                }
+
+                // Teleportiere zum Spawn
+                player.teleport(player.getWorld().getSpawnLocation());
+
+                // Setze alle Flags zurück
+                player.setFlying(false);
+                player.setAllowFlight(false);
+                player.setInvulnerable(false);
+                player.setCollidable(true);
+
+                // Mache sichtbar für alle
+                for (Player other : Bukkit.getOnlinePlayers()) {
+                    other.showPlayer(plugin, player);
+                }
+
+                // Leere Inventar wenn im Setup
+                if (activeChallenge.getCurrentPhase() == Challenge.ChallengePhase.SETUP) {
+                    player.getInventory().clear();
+                }
+            }
+        }
+
+        // Cleanup Arenen
+        if (arenaManager != null) {
+            arenaManager.clearArenas();
+        }
+
+        // Cleanup WaveManager
+        if (waveManager != null) {
+            for (UUID playerId : activeChallenge.getParticipants()) {
+                waveManager.cleanup(playerId);
+            }
+        }
+
+        // Cleanup BossSetupManager
+        if (activeChallenge.getBossPlayerId() != null) {
+            bossSetupManager.removeTeamBuilder(activeChallenge.getBossPlayerId());
+
+            Player boss = Bukkit.getPlayer(activeChallenge.getBossPlayerId());
+            if (boss != null) {
+                boss.closeInventory();
+                boss.setGameMode(GameMode.SURVIVAL);
+                boss.getInventory().clear();
+            }
+        }
+
+        // Resette Challenge
+        activeChallenge = null;
+
+        Bukkit.getLogger().info("[ChallengeManager] Challenge abgebrochen und aufgeräumt");
+    }
 
 }

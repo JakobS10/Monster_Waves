@@ -3,6 +3,7 @@ package de.challengeplugin.managers;
 import de.challengeplugin.ChallengePlugin;
 import de.challengeplugin.models.Challenge;
 import de.challengeplugin.models.Wave;
+import de.challengeplugin.models.WavePresets;
 import org.bukkit.*;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
@@ -31,31 +32,144 @@ public class BossSetupManager {
     /**
      * Startet kompletten Setup-Prozess
      */
-    public void startCompleteSetup(Player boss, BiConsumer<Boolean, Boolean> finalCallback) {
+    /**
+     * Startet kompletten Setup-Prozess
+     */
+    public void startCompleteSetup(Player boss) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
+
+        if (challenge == null) {
+            boss.sendMessage("§cKeine aktive Challenge!");
+            return;
+        }
+
+        boss.sendMessage("§6§l=== Challenge-Setup ===");
+        boss.sendMessage("§7Schritt 1: Team-Modus wählen");
 
         // Erst Team-Mode auswählen
         openTeamModeGUI(boss, (teamMode) -> {
             challenge.setTeamMode(teamMode);
+            boss.sendMessage("§a✓ Team-Modus: §e" + teamMode.name() + " §7(Größe: " + teamMode.getTeamSize() + ")");
 
-            // Dann Dimensionen
-            openDimensionSettingsGUI(boss, (netherEnabled, endEnabled) -> {
-                challenge.setNetherEnabled(netherEnabled);
-                challenge.setEndEnabled(endEnabled);
+            // NEU: Frage ob manuell oder automatisch
+            boss.sendMessage("§7Schritt 2: Team-Erstellung");
+            openTeamAssignmentModeGUI(boss, (isManual) -> {
+                if (isManual) {
+                    // Manuell: Öffne Team-Builder
+                    openTeamBuilder(boss, (v) -> {
+                        // Nach Team-Building weiter
+                        continueAfterTeamCreation(boss);
+                    });
+                } else {
+                    // Automatisch: Wie bisher
+                    boss.sendMessage("§7Schritt 3: Teilnahme wählen");
+                    openParticipationGUI(boss, (participates) -> {
+                        challenge.setBossParticipates(participates);
+                        boss.sendMessage("§a✓ Du spielst " + (participates ? "MIT" : "NICHT mit"));
 
-                // Dann Participation
-                openParticipationGUI(boss, (participates) -> {
-                    challenge.setBossParticipates(participates);
-
-                    // Erstelle Teams
-                    challenge.createTeams();
-                    showTeamOverview(boss);
-
-                    // Starte Wave-Setup
-                    startWaveSetup(boss);
-                });
+                        challenge.createTeams();
+                        continueAfterTeamCreation(boss);
+                    });
+                }
             });
         });
+    }
+
+    /**
+     * Öffnet Preset-Auswahl GUI für ein Team
+     */
+    /**
+     * NEU: Öffnet Preset-Auswahl GUI
+     */
+    public void openPresetSelectionGUI(Player boss, UUID teamId, Consumer<WavePresets.Difficulty> callback) {
+        Inventory inv = Bukkit.createInventory(null, 27, "§6Wave-Schwierigkeit");
+
+        // Easy
+        ItemStack easy = new ItemStack(Material.WOODEN_SWORD);
+        ItemMeta easyMeta = easy.getItemMeta();
+        easyMeta.setDisplayName(WavePresets.Difficulty.EASY.getDisplayName());
+        easyMeta.setLore(Arrays.asList(
+                "§710 Zombies",
+                "§78 Skeletons",
+                "§75 Zombies + 5 Skeletons"
+        ));
+        easy.setItemMeta(easyMeta);
+
+        // Medium
+        ItemStack medium = new ItemStack(Material.IRON_SWORD);
+        ItemMeta mediumMeta = medium.getItemMeta();
+        mediumMeta.setDisplayName(WavePresets.Difficulty.MEDIUM.getDisplayName());
+        mediumMeta.setLore(Arrays.asList(
+                "§715 Zombies + 5 Spiders",
+                "§710 Skeletons + 3 Creepers",
+                "§7Mixed Wave"
+        ));
+        medium.setItemMeta(mediumMeta);
+
+        // Hard
+        ItemStack hard = new ItemStack(Material.DIAMOND_SWORD);
+        ItemMeta hardMeta = hard.getItemMeta();
+        hardMeta.setDisplayName(WavePresets.Difficulty.HARD.getDisplayName());
+        hardMeta.setLore(Arrays.asList(
+                "§720 Zombies + 10 Spiders",
+                "§715 Skeletons + 5 Creepers + 3 Witches",
+                "§7Heavy Mixed Wave"
+        ));
+        hard.setItemMeta(hardMeta);
+
+        // Extreme
+        ItemStack extreme = new ItemStack(Material.NETHERITE_SWORD);
+        ItemMeta extremeMeta = extreme.getItemMeta();
+        extremeMeta.setDisplayName(WavePresets.Difficulty.EXTREME.getDisplayName());
+        extremeMeta.setLore(Arrays.asList(
+                "§730 Zombies + 15 Spiders + 5 Witches",
+                "§720 Skeletons + 10 Creepers + 5 Endermen + Ravager",
+                "§7Boss Wave: Wither + Support"
+        ));
+        extreme.setItemMeta(extremeMeta);
+
+        // Custom
+        ItemStack custom = new ItemStack(Material.CRAFTING_TABLE);
+        ItemMeta customMeta = custom.getItemMeta();
+        customMeta.setDisplayName(WavePresets.Difficulty.CUSTOM.getDisplayName());
+        customMeta.setLore(Arrays.asList(
+                "§7Definiere Waves selbst",
+                "§7mit Spawn Eggs"
+        ));
+        custom.setItemMeta(customMeta);
+
+        inv.setItem(10, easy);
+        inv.setItem(12, medium);
+        inv.setItem(14, hard);
+        inv.setItem(16, extreme);
+        inv.setItem(22, custom);
+
+        boss.openInventory(inv);
+
+        // Speichere Kontext
+        SetupContext context = activeSetups.get(boss.getUniqueId());
+        if (context != null) {
+            context.presetCallback = callback;
+            context.stage = SetupStage.PRESET_SELECTION;
+        }
+    }
+
+    /**
+     * Erstellt Waves aus Preset
+     */
+    private List<Wave> createWavesFromPreset(WavePresets.Difficulty difficulty, UUID teamId) {
+        List<List<EntityType>> presetWaves = WavePresets.getPreset(difficulty);
+        List<Wave> waves = new ArrayList<>();
+
+        for (int i = 0; i < presetWaves.size(); i++) {
+            Wave wave = new Wave(i + 1, teamId);
+            for (EntityType type : presetWaves.get(i)) {
+                wave.addMob(type);
+            }
+            waves.add(wave);
+        }
+
+        return waves;
     }
 
     /**
@@ -192,6 +306,51 @@ public class BossSetupManager {
         context.participationCallback = callback;
     }
 
+    // Tracking für Team-Builder
+    private final Map<UUID, TeamBuilderGUI> activeTeamBuilders = new HashMap<>();
+
+    /**
+     * Öffnet Team-Builder GUI statt automatischer Team-Erstellung
+     */
+    public void openTeamBuilder(Player boss, Consumer<Void> onComplete) {
+        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
+
+        boss.sendMessage("§6§l=== Team-Builder ===");
+        boss.sendMessage("§7Weise Spieler manuell zu Teams zu");
+        boss.sendMessage("");
+
+        TeamBuilderGUI teamBuilder = new TeamBuilderGUI(plugin, boss, challenge);
+        activeTeamBuilders.put(boss.getUniqueId(), teamBuilder);
+
+        // Speichere Callback
+        SetupContext context = activeSetups.get(boss.getUniqueId());
+        if (context == null) {
+            context = new SetupContext();
+            activeSetups.put(boss.getUniqueId(), context);
+        }
+        context.stage = SetupStage.MANUAL_TEAM_BUILDING;
+        context.setupCompleteCallback = () -> {
+            // Nach Team-Building weiter mit Dimensionen
+            onComplete.accept(null);
+        };
+
+        teamBuilder.open();
+    }
+
+    /**
+     * Gibt aktiven Team-Builder zurück
+     */
+    public TeamBuilderGUI getTeamBuilder(UUID bossId) {
+        return activeTeamBuilders.get(bossId);
+    }
+
+    /**
+     * Entfernt Team-Builder
+     */
+    public void removeTeamBuilder(UUID bossId) {
+        activeTeamBuilders.remove(bossId);
+    }
+
     /**
      * Zeigt Team-Übersicht
      */
@@ -243,7 +402,76 @@ public class BossSetupManager {
     }
 
     /**
-     * Setup für nächstes Team
+     * NEU: GUI für manuelle vs. automatische Team-Erstellung
+     */
+    private void openTeamAssignmentModeGUI(Player boss, Consumer<Boolean> callback) {
+        Inventory inv = Bukkit.createInventory(null, 27, "§6Team-Erstellung");
+
+        ItemStack manual = new ItemStack(Material.WRITABLE_BOOK);
+        ItemMeta manualMeta = manual.getItemMeta();
+        manualMeta.setDisplayName("§e§lManuell");
+        manualMeta.setLore(Arrays.asList(
+                "§7Du weist Spieler selbst",
+                "§7zu Teams zu",
+                "",
+                "§aVolle Kontrolle"
+        ));
+        manual.setItemMeta(manualMeta);
+
+        ItemStack auto = new ItemStack(Material.ENCHANTED_BOOK);
+        ItemMeta autoMeta = auto.getItemMeta();
+        autoMeta.setDisplayName("§a§lAutomatisch");
+        autoMeta.setLore(Arrays.asList(
+                "§7Spieler werden gleichmäßig",
+                "§7auf Teams verteilt",
+                "",
+                "§aSchnell & einfach"
+        ));
+        auto.setItemMeta(autoMeta);
+
+        inv.setItem(11, manual);
+        inv.setItem(15, auto);
+
+        boss.openInventory(inv);
+
+        SetupContext context = activeSetups.get(boss.getUniqueId());
+        if (context == null) {
+            context = new SetupContext();
+            activeSetups.put(boss.getUniqueId(), context);
+        }
+        context.stage = SetupStage.TEAM_MODE; // Temp stage
+        context.teamAssignmentCallback = callback;
+    }
+
+    /**
+     * Setzt Setup nach Team-Erstellung fort
+     */
+    private void continueAfterTeamCreation(Player boss) {
+        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
+
+        if (challenge.getTeams().isEmpty()) {
+            boss.sendMessage("§c§lFEHLER: Keine Teams erstellt!");
+            return;
+        }
+
+        // Zeige Übersicht
+        showTeamOverview(boss);
+
+        // Weiter mit Dimensionen
+        boss.sendMessage("§7Schritt 3: Dimensionen konfigurieren");
+        openDimensionSettingsGUI(boss, (netherEnabled, endEnabled) -> {
+            challenge.setNetherEnabled(netherEnabled);
+            challenge.setEndEnabled(endEnabled);
+            boss.sendMessage("§a✓ Dimensionen: Nether=" + netherEnabled + ", End=" + endEnabled);
+
+            // Weiter mit Wave-Setup
+            boss.sendMessage("§7Schritt 4: Waves definieren");
+            startWaveSetup(boss);
+        });
+    }
+
+    /**
+     * Setup für nächstes Team (jetzt mit Preset-Option)
      */
     private void setupNextTeam(Player boss) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
@@ -262,18 +490,44 @@ public class BossSetupManager {
             Player p = Bukkit.getPlayer(playerId);
             memberNames.add(p != null ? p.getName() : "???");
         }
-        String teamName = String.join(" & ", memberNames);
 
+        boss.sendMessage("§e§l=== Wave-Setup ===");
+        boss.sendMessage("§7Team: §e" + String.join(" & ", memberNames));
+        boss.sendMessage("");
+
+        // NEU: Öffne Preset-Auswahl statt direkt Custom-Setup
+        openPresetSelectionGUI(boss, teamId, (difficulty) -> {
+            if (difficulty == WavePresets.Difficulty.CUSTOM) {
+                // Custom: Wie bisher mit Spawn Eggs
+                startCustomWaveSetup(boss, teamId, memberNames);
+            } else {
+                // Preset: Erstelle Waves automatisch
+                List<Wave> waves = createWavesFromPreset(difficulty, teamId);
+                challenge.getTeamWaves().put(teamId, waves);
+
+
+
+                boss.sendMessage("§a✓ Preset gewählt: " + difficulty.getDisplayName());
+                boss.sendMessage("§7Waves wurden automatisch erstellt");
+
+                // Nächstes Team
+                context.currentTeamIndex++;
+                setupNextTeam(boss);
+            }
+        });
+    }
+
+    /**
+     * NEU: Startet Custom-Wave-Setup (bisherige Logik)
+     */
+    private void startCustomWaveSetup(Player boss, UUID teamId, List<String> memberNames) {
+        SetupContext context = activeSetups.get(boss.getUniqueId());
         context.currentWave = 0;
         context.currentTeamWaves = new ArrayList<>();
 
-        boss.sendMessage("§e§l=== Wave-Setup ===");
-        boss.sendMessage("§7Team: §e" + teamName);
         boss.sendMessage("§7Wave: §e1/3");
-        boss.sendMessage("");
         boss.sendMessage("§7Fülle dein Inventar mit §eSpawn Eggs");
-        boss.sendMessage("§7für die erste Wave dieses Teams.");
-        boss.sendMessage("§7Klicke dann auf den §aGrünen Haken§7 im Inventar.");
+        boss.sendMessage("§7Klicke dann auf den §aGrünen Haken§7.");
 
         ItemStack confirm = new ItemStack(Material.LIME_WOOL);
         ItemMeta meta = confirm.getItemMeta();
@@ -386,7 +640,9 @@ public class BossSetupManager {
         public BiConsumer<Boolean, Boolean> dimensionCallback;
         public Consumer<Boolean> participationCallback;
         public Consumer<Challenge.TeamMode> teamModeCallback;
+        public Consumer<WavePresets.Difficulty> presetCallback; // NEU!
         public Runnable setupCompleteCallback;
+        public Consumer<Boolean> teamAssignmentCallback; // NEU: Manuell vs Auto
 
         public boolean netherEnabled = false;
         public boolean endEnabled = false;
@@ -395,12 +651,22 @@ public class BossSetupManager {
         public int currentTeamIndex;
         public int currentWave;
         public List<Wave> currentTeamWaves;
+
+        // NEU: Für Preset-System
+        public UUID currentPresetTeamId;
+
+        // NEU: Für manuelles Team-Building
+        public Map<Integer, List<UUID>> manualTeams;
+        public List<UUID> unassignedPlayers;
     }
 
     public enum SetupStage {
         TEAM_MODE,
+        MANUAL_TEAM_BUILDING,  // NEU!
         DIMENSIONS,
         PARTICIPATION,
+        PRESET_SELECTION,      // NEU!
         WAVE_SETUP
     }
+
 }

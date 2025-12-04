@@ -12,7 +12,7 @@ softdepend: [FastAsyncWorldEdit]
 commands:
   challenge:
     description: Startet eine Challenge
-    usage: /challenge start <FarmZeit-Sekunden> <Boss-Spieler>
+    usage: /challenge start <FarmZeit-Sekunden> <Boss-Spieler>, /challenge cancel
     permission: challenge.start
     aliases: [ch]
 

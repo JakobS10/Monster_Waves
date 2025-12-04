@@ -2,7 +2,9 @@ package de.challengeplugin.listeners;
 
 import de.challengeplugin.ChallengePlugin;
 import de.challengeplugin.managers.BossSetupManager;
+import de.challengeplugin.managers.TeamBuilderGUI;
 import de.challengeplugin.models.Challenge;
+import de.challengeplugin.models.WavePresets;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -24,6 +26,29 @@ public class SetupGUIListener implements Listener {
     }
 
     /**
+     * Verhindert Drag&Drop in Setup-GUIs
+     */
+    @EventHandler
+    public void onInventoryDrag(InventoryDragEvent event) {
+        if (!(event.getWhoClicked() instanceof Player)) return;
+
+        String title = event.getView().getTitle();
+
+        // Liste aller geschützten GUIs
+        if (title.equals("§6Team-Modus wählen") ||
+                title.equals("§6Team-Erstellung") ||
+                title.startsWith("§6Wave-Schwierigkeit") ||
+                title.equals("§6Welten-Zugang") ||
+                title.equals("§6Boss-Teilnahme") ||
+                title.equals("§6§lTeam-Builder") ||
+                title.equals("§b§lSpectator-Modus") ||
+                title.equals("§6§lChallenge-Auswertung")) {
+
+            event.setCancelled(true);
+        }
+    }
+
+    /**
      * Inventory-Click während Setup
      */
     @EventHandler
@@ -33,10 +58,58 @@ public class SetupGUIListener implements Listener {
 
         String title = event.getView().getTitle();
 
+        // WICHTIG: Auch Shift-Click aus Player-Inventar blockieren!
+        if (event.getClickedInventory() != null &&
+                event.getClickedInventory().getType() == InventoryType.PLAYER) {
+
+
+            if (title.startsWith("§6Wave-Schwierigkeit") ||
+                    title.equals("§6Team-Modus wählen") ||
+                    title.equals("§6Team-Erstellung") ||
+                    title.equals("§6Welten-Zugang") ||
+                    title.equals("§6Boss-Teilnahme")) {
+
+                // Shift-Click blockieren
+                if (event.isShiftClick()) {
+                    event.setCancelled(true);
+                }
+            }
+        }
+
+
         // NEU: Team-Mode-GUI
         if (title.equals("§6Team-Modus wählen")) {
             event.setCancelled(true);
             handleTeamModeGUI(player, event.getSlot());
+        }
+
+        // NEU: Team-Erstellung-Modus GUI
+        else if (title.equals("§6Team-Erstellung")) {
+            event.setCancelled(true);
+            handleTeamAssignmentModeGUI(player, event.getSlot());
+        }
+        // NEU: Team-Builder GUI
+        else if (title.equals("§6§lTeam-Builder")) {
+            event.setCancelled(true);
+            TeamBuilderGUI teamBuilder = plugin.getChallengeManager()
+                    .getBossSetupManager().getTeamBuilder(player.getUniqueId());
+
+            if (teamBuilder != null) {
+                boolean handled = teamBuilder.handleClick(
+                        event.getSlot(),
+                        event.getClick().isRightClick(),
+                        event.getClick().isShiftClick()
+                );
+
+                if (!handled) {
+                    player.sendMessage("§7Klick wurde nicht verarbeitet");
+                }
+            }
+        }
+        // NEU: Preset-Auswahl GUI
+        else if (title.startsWith("§6Wave-Schwierigkeit")) {
+            event.setCancelled(true);
+            handlePresetSelectionGUI(player, event.getSlot());
         }
 
         // Dimension-GUI
@@ -50,7 +123,7 @@ public class SetupGUIListener implements Listener {
             handleParticipationGUI(player, event.getSlot());
         }
         // Wave-Setup: Nur Bestätigen-Button blockieren
-        else if (title.equals("§e§lWave-Setup")) {
+        else if (title.equals("§e§lWave-Schwierigkeit")) {
             BossSetupManager.SetupContext context = plugin.getChallengeManager()
                     .getBossSetupManager().getSetupContext(player.getUniqueId());
 
@@ -234,5 +307,57 @@ public class SetupGUIListener implements Listener {
         player.closeInventory();
         player.sendMessage("§aTeam-Modus gewählt: §e" + selectedMode.name());
         context.teamModeCallback.accept(selectedMode);
+    }
+
+    /**
+     * NEU: Handhabt Team-Assignment-Mode-GUI
+     */
+    private void handleTeamAssignmentModeGUI(Player player, int slot) {
+        BossSetupManager.SetupContext context = plugin.getChallengeManager()
+                .getBossSetupManager().getSetupContext(player.getUniqueId());
+
+        if (context == null || context.teamAssignmentCallback == null) return;
+
+        boolean isManual = false;
+
+        if (slot == 11) { // Manuell
+            isManual = true;
+        } else if (slot == 15) { // Automatisch
+            isManual = false;
+        } else {
+            return;
+        }
+
+        player.closeInventory();
+        context.teamAssignmentCallback.accept(isManual);
+    }
+
+    /**
+     * NEU: Handhabt Preset-Auswahl
+     */
+    private void handlePresetSelectionGUI(Player player, int slot) {
+        BossSetupManager.SetupContext context = plugin.getChallengeManager()
+                .getBossSetupManager().getSetupContext(player.getUniqueId());
+
+        if (context == null || context.presetCallback == null) return;
+
+        WavePresets.Difficulty selected = null;
+
+        if (slot == 10) {
+            selected = WavePresets.Difficulty.EASY;
+        } else if (slot == 12) {
+            selected = WavePresets.Difficulty.MEDIUM;
+        } else if (slot == 14) {
+            selected = WavePresets.Difficulty.HARD;
+        } else if (slot == 16) {
+            selected = WavePresets.Difficulty.EXTREME;
+        } else if (slot == 22) {
+            selected = WavePresets.Difficulty.CUSTOM;
+        } else {
+            return;
+        }
+
+        player.closeInventory();
+        context.presetCallback.accept(selected);
     }
 }
