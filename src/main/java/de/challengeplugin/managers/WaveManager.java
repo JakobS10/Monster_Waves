@@ -7,6 +7,7 @@ import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.entity.*;
+import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 import java.util.*;
 
@@ -86,7 +87,7 @@ public class WaveManager {
         }
 
         // Countdown-Task
-        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+        BukkitRunnable runnable = new BukkitRunnable() {
             int remaining = seconds;
 
             @Override
@@ -94,6 +95,7 @@ public class WaveManager {
                 if (remaining <= 0) {
                     countdownTasks.remove(teamId);
                     spawnWaveMobsForTeam(teamId, wave);
+                    cancel();
                     return;
                 }
 
@@ -101,7 +103,7 @@ public class WaveManager {
                 bossbar.setTitle("§eWave " + wave.getWaveNumber() + " startet in §6" + remaining + "s");
 
                 // Sound für alle Team-Mitglieder
-                if (remaining <= 10 && remaining <= 5 || remaining <= 3) {
+                if (remaining == 10 || remaining == 5 || remaining <= 3) {
                     for (UUID memberId : teamMembers) {
                         Player player = Bukkit.getPlayer(memberId);
                         if (player != null) {
@@ -112,8 +114,8 @@ public class WaveManager {
 
                 remaining--;
             }
-        }, 0L, 20L);
-
+        };
+        BukkitTask task = runnable.runTaskTimer(plugin, 0L, 20L);
         countdownTasks.put(teamId, task);
     }
     /**
