@@ -89,27 +89,59 @@ public class ArenaManager {
     /**
      * Erstellt eine einzelne Arena-Instanz
      */
-    private ArenaInstance createArenaInstance(UUID playerId, Location centerLocation) {
-        ArenaInstance arena = new ArenaInstance(
-                UUID.randomUUID(),
-                playerId,
-                centerLocation,
-                ARENA_SIZE_X,
-                ARENA_SIZE_Z,
-                ARENA_SIZE_Y
-        );
+    private ArenaInstance createArenaInstance(UUID teamId, Location pasteLocation) {
+        // Berechne echten Mittelpunkt der Arena
+        Location trueCenterLocation;
 
-        // Platziere Schematic oder erstelle Fallback
         if (arenaSchematic != null) {
-            pasteSchematic(centerLocation);
+            // Hole Schematic-Dimensionen
+            int[] dimensions = getDimensions(arenaSchematic);
+            int sizeX = dimensions[0];
+            int sizeY = dimensions[1];
+            int sizeZ = dimensions[2];
+
+            // Berechne Mittelpunkt: Paste-Location + halbe Größe
+            trueCenterLocation = pasteLocation.clone().add(
+                    sizeX / 2.0,
+                    sizeY / 2.0,
+                    sizeZ / 2.0
+            );
+
+            Bukkit.getLogger().info("[ArenaManager] Schematic-Größe: " + sizeX + "x" + sizeY + "x" + sizeZ);
+            Bukkit.getLogger().info("[ArenaManager] Paste-Location: " + pasteLocation);
+            Bukkit.getLogger().info("[ArenaManager] Echter Mittelpunkt: " + trueCenterLocation);
+
+            // Erstelle Arena mit echten Dimensionen
+            ArenaInstance arena = new ArenaInstance(
+                    UUID.randomUUID(),
+                    teamId,
+                    trueCenterLocation,
+                    sizeX,
+                    sizeZ,
+                    sizeY
+            );
+
+            // Platziere Schematic
+            pasteSchematic(pasteLocation);
+
+            return arena;
         } else {
-            buildFallbackArena(centerLocation);
+            // Fallback ohne Schematic
+            trueCenterLocation = pasteLocation.clone();
+
+            ArenaInstance arena = new ArenaInstance(
+                    UUID.randomUUID(),
+                    teamId,
+                    trueCenterLocation,
+                    ARENA_SIZE_X,
+                    ARENA_SIZE_Z,
+                    ARENA_SIZE_Y
+            );
+
+            buildFallbackArena(trueCenterLocation);
+
+            return arena;
         }
-
-        // Erstelle WorldBorder für diese Arena
-        createArenaBorder(arena);
-
-        return arena;
     }
 
     /**
@@ -252,5 +284,15 @@ public class ArenaManager {
 
         UUID teamId = challenge.getTeamOfPlayer(playerId);
         return getArenaForTeam(teamId);
+    }
+
+    /**
+     * Gibt Dimensionen einer Schematic zurück
+     */
+    public int[] getDimensions(Clipboard clipboard) {  // public statt private!
+        if (clipboard == null) return new int[]{0, 0, 0};
+
+        BlockVector3 dimensions = clipboard.getDimensions();
+        return new int[]{dimensions.x(), dimensions.y(), dimensions.z()};
     }
 }

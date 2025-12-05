@@ -32,9 +32,6 @@ public class BossSetupManager {
     /**
      * Startet kompletten Setup-Prozess
      */
-    /**
-     * Startet kompletten Setup-Prozess
-     */
     public void startCompleteSetup(Player boss) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
 
@@ -46,28 +43,40 @@ public class BossSetupManager {
         boss.sendMessage("§6§l=== Challenge-Setup ===");
         boss.sendMessage("§7Schritt 1: Team-Modus wählen");
 
-        // Erst Team-Mode auswählen
+        // Schritt 1: Team-Mode
         openTeamModeGUI(boss, (teamMode) -> {
             challenge.setTeamMode(teamMode);
             boss.sendMessage("§a✓ Team-Modus: §e" + teamMode.name() + " §7(Größe: " + teamMode.getTeamSize() + ")");
 
-            // NEU: Frage ob manuell oder automatisch
+            // Schritt 2: Team-Assignment-Mode (Manuell vs Auto)
             boss.sendMessage("§7Schritt 2: Team-Erstellung");
             openTeamAssignmentModeGUI(boss, (isManual) -> {
+
                 if (isManual) {
-                    // Manuell: Öffne Team-Builder
+                    // === MANUELL ===
+                    boss.sendMessage("§eManuelles Team-Building wird geöffnet...");
+
+                    // Öffne Team-Builder mit Callback
                     openTeamBuilder(boss, (v) -> {
-                        // Nach Team-Building weiter
+                        // Nach Team-Builder weiter
+                        boss.sendMessage("§a✓ Teams manuell erstellt");
                         continueAfterTeamCreation(boss);
                     });
+
                 } else {
-                    // Automatisch: Wie bisher
+                    // === AUTOMATISCH ===
                     boss.sendMessage("§7Schritt 3: Teilnahme wählen");
+
                     openParticipationGUI(boss, (participates) -> {
                         challenge.setBossParticipates(participates);
                         boss.sendMessage("§a✓ Du spielst " + (participates ? "MIT" : "NICHT mit"));
 
+                        // Erstelle Teams automatisch
+                        boss.sendMessage("§eErstelle Teams automatisch...");
                         challenge.createTeams();
+                        boss.sendMessage("§a✓ Teams automatisch erstellt");
+
+                        // Weiter
                         continueAfterTeamCreation(boss);
                     });
                 }
@@ -77,9 +86,6 @@ public class BossSetupManager {
 
     /**
      * Öffnet Preset-Auswahl GUI für ein Team
-     */
-    /**
-     * NEU: Öffnet Preset-Auswahl GUI
      */
     public void openPresetSelectionGUI(Player boss, UUID teamId, Consumer<WavePresets.Difficulty> callback) {
         Inventory inv = Bukkit.createInventory(null, 27, "§6Wave-Schwierigkeit");
@@ -312,6 +318,9 @@ public class BossSetupManager {
     /**
      * Öffnet Team-Builder GUI statt automatischer Team-Erstellung
      */
+    /**
+     * Öffnet Team-Builder GUI statt automatischer Team-Erstellung
+     */
     public void openTeamBuilder(Player boss, Consumer<Void> onComplete) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
 
@@ -322,17 +331,17 @@ public class BossSetupManager {
         TeamBuilderGUI teamBuilder = new TeamBuilderGUI(plugin, boss, challenge);
         activeTeamBuilders.put(boss.getUniqueId(), teamBuilder);
 
-        // Speichere Callback
-        SetupContext context = activeSetups.get(boss.getUniqueId());
-        if (context == null) {
-            context = new SetupContext();
-            activeSetups.put(boss.getUniqueId(), context);
-        }
-        context.stage = SetupStage.MANUAL_TEAM_BUILDING;
-        context.setupCompleteCallback = () -> {
-            // Nach Team-Building weiter mit Dimensionen
+        // NEU: Setze Callback für Fertigstellung
+        teamBuilder.setOnCompleteCallback(() -> {
+            // Entferne Team-Builder
+            activeTeamBuilders.remove(boss.getUniqueId());
+
+            // Zeige Team-Übersicht
+            showTeamOverview(boss);
+
+            // Rufe onComplete auf
             onComplete.accept(null);
-        };
+        });
 
         teamBuilder.open();
     }
@@ -446,28 +455,35 @@ public class BossSetupManager {
     /**
      * Setzt Setup nach Team-Erstellung fort
      */
+    /**
+     * Setzt Setup nach Team-Erstellung fort
+     */
     private void continueAfterTeamCreation(Player boss) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
 
         if (challenge.getTeams().isEmpty()) {
             boss.sendMessage("§c§lFEHLER: Keine Teams erstellt!");
+            boss.sendMessage("§7Nutze /challenge cancel zum Abbrechen");
             return;
         }
 
-        // Zeige Übersicht
-        showTeamOverview(boss);
+        // Zeige Übersicht (falls nicht schon vom TeamBuilder gemacht)
+        // showTeamOverview(boss); // Auskommentiert, da TeamBuilder das schon macht
 
         // Weiter mit Dimensionen
-        boss.sendMessage("§7Schritt 3: Dimensionen konfigurieren");
-        openDimensionSettingsGUI(boss, (netherEnabled, endEnabled) -> {
-            challenge.setNetherEnabled(netherEnabled);
-            challenge.setEndEnabled(endEnabled);
-            boss.sendMessage("§a✓ Dimensionen: Nether=" + netherEnabled + ", End=" + endEnabled);
+        boss.sendMessage("§7Nächster Schritt: Dimensionen konfigurieren");
 
-            // Weiter mit Wave-Setup
-            boss.sendMessage("§7Schritt 4: Waves definieren");
-            startWaveSetup(boss);
-        });
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            openDimensionSettingsGUI(boss, (netherEnabled, endEnabled) -> {
+                challenge.setNetherEnabled(netherEnabled);
+                challenge.setEndEnabled(endEnabled);
+                boss.sendMessage("§a✓ Dimensionen: Nether=" + netherEnabled + ", End=" + endEnabled);
+
+                // Weiter mit Wave-Setup
+                boss.sendMessage("§7Nächster Schritt: Waves definieren");
+                startWaveSetup(boss);
+            });
+        }, 20L); // 1 Sekunde Pause für bessere UX
     }
 
     /**

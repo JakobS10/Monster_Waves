@@ -28,6 +28,9 @@ public class TeamBuilderGUI {
     // GUI-State
     private int currentPage = 0;
 
+    // Callback für Fertigstellung
+    private Runnable onCompleteCallback;
+
     public TeamBuilderGUI(ChallengePlugin plugin, Player boss, Challenge challenge) {
         this.plugin = plugin;
         this.boss = boss;
@@ -359,7 +362,18 @@ public class TeamBuilderGUI {
 
         boss.sendMessage("§a§lTeams erstellt!");
         Bukkit.getLogger().info("[TeamBuilder] " + challenge.getTeams().size() + " Teams manuell erstellt");
+
+        // NEU: Rufe Callback auf!
+        if (onCompleteCallback != null) {
+            Bukkit.getScheduler().runTask(plugin, onCompleteCallback);
+        }
     }
+
+    // NEU: Setter für Callback
+    public void setOnCompleteCallback(Runnable callback) {
+        this.onCompleteCallback = callback;
+    }
+
 
 // === GETTER ===
 

@@ -26,18 +26,8 @@ public class SpectatorManager {
      * Gibt Spectator-Compass an Spieler
      */
     public void giveSpectatorCompass(Player player) {
-        ItemStack compass = new ItemStack(Material.COMPASS);
-        ItemMeta meta = compass.getItemMeta();
-        meta.setDisplayName("§b§lSpectator-Navigator");
-        meta.setLore(Arrays.asList(
-                "§7Rechtsklick um zu anderen",
-                "§7Spielern zu teleportieren"
-        ));
-        compass.setItemMeta(meta);
-
-        player.getInventory().setItem(4, compass);
         player.sendMessage("§b§lDu kannst jetzt anderen Spielern zuschauen!");
-        player.sendMessage("§7Nutze den §eCompass §7zum Teleportieren");
+        player.sendMessage("§7Oder du schaust stattdessen TikTok...");
     }
 
     /**

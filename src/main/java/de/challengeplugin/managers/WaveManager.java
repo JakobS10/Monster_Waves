@@ -53,12 +53,8 @@ public class WaveManager {
 
         Wave wave = waves.get(waveIndex);
 
-        // Wenn nicht erste Wave, starte Countdown
-        if (waveIndex > 0) {
-            startWaveCountdownForTeam(teamId, wave, 30);
-        } else {
-            spawnWaveMobsForTeam(teamId, wave);
-        }
+        // NEU: ALLE Waves mit Countdown starten (auch Wave 1!)
+        startWaveCountdownForTeam(teamId, wave, 30); // 30 Sekunden für ALLE Waves
     }
 
     /**
@@ -398,5 +394,59 @@ public class WaveManager {
                 }
             }
         }
+    }
+
+    /**
+     * NEU: Räumt alle Daten für ein Team auf
+     */
+    public void cleanupTeam(UUID teamId) {
+        // Stoppe Team-Countdown
+        BukkitTask task = countdownTasks.remove(teamId);
+        if (task != null) {
+            task.cancel();
+        }
+
+        // Entferne Team-Mobs
+        Set<UUID> mobs = playerMobs.remove(teamId);
+        if (mobs != null) {
+            for (UUID mobId : mobs) {
+                Entity entity = Bukkit.getEntity(mobId);
+                if (entity != null) {
+                    entity.remove();
+                }
+            }
+        }
+
+        Bukkit.getLogger().info("[WaveManager] Team-Cleanup durchgeführt für: " + teamId);
+    }
+
+    /**
+     * NEU: Räumt ALLES auf (für Challenge-Ende)
+     */
+    public void cleanupAll() {
+        // Entferne alle Bossbars
+        for (BossBar bar : new ArrayList<>(playerBossbars.values())) {
+            bar.removeAll();
+        }
+        playerBossbars.clear();
+
+        // Stoppe alle Tasks
+        for (BukkitTask task : new ArrayList<>(countdownTasks.values())) {
+            task.cancel();
+        }
+        countdownTasks.clear();
+
+        // Entferne alle Mobs
+        for (Set<UUID> mobSet : new ArrayList<>(playerMobs.values())) {
+            for (UUID mobId : mobSet) {
+                Entity entity = Bukkit.getEntity(mobId);
+                if (entity != null) {
+                    entity.remove();
+                }
+            }
+        }
+        playerMobs.clear();
+
+        Bukkit.getLogger().info("[WaveManager] Vollständiges Cleanup durchgeführt");
     }
 }

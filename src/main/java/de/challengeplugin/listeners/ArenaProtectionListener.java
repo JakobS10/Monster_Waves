@@ -38,21 +38,6 @@ public class ArenaProtectionListener implements Listener {
     }
 
     /**
-     * Verhindert Block-Place in Arena
-     */
-    @EventHandler
-    public void onBlockPlace(BlockPlaceEvent event) {
-        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
-        if (challenge == null) return;
-        if (challenge.getCurrentPhase() != Challenge.ChallengePhase.COMBAT) return;
-
-        ArenaManager am = plugin.getChallengeManager().getArenaManager();
-        if (am.isInArena(event.getBlock().getLocation())) {
-            event.setCancelled(true);
-        }
-    }
-
-    /**
      * Verhindert Teleport aus Arena
      */
     @EventHandler
@@ -93,24 +78,6 @@ public class ArenaProtectionListener implements Listener {
 
         if (arena == null) return;
 
-        // Prüfe ob Spieler Arena-Grenzen verlassen würde
-        if (!isInArenaBounds(event.getTo(), arena)) {
-            event.setCancelled(true);
-            player.sendMessage("§cDu kannst die Arena nicht verlassen!");
-        }
-    }
 
-    /**
-     * Prüft ob Location in Arena-Grenzen
-     */
-    private boolean isInArenaBounds(org.bukkit.Location loc, ArenaInstance arena) {
-        org.bukkit.Location center = arena.getCenterLocation();
-        double halfX = arena.getSizeX() / 2.0;
-        double halfZ = arena.getSizeZ() / 2.0;
-
-        return Math.abs(loc.getX() - center.getX()) <= halfX
-                && Math.abs(loc.getZ() - center.getZ()) <= halfZ
-                && loc.getY() >= center.getY()
-                && loc.getY() <= center.getY() + arena.getSizeY();
     }
 }

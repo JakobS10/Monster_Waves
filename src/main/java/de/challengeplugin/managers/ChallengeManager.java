@@ -150,25 +150,34 @@ public class ChallengeManager {
     }
 
     /**
-     * Combat-Phase: Teams kämpfen in Arenen
+     * Combat-Phase: TEAMS kämpfen in Arenen
      */
     private void startCombatPhase() {
+        // Prüfe ob Teams existieren
+        if (activeChallenge.getTeams().isEmpty()) {
+            Bukkit.broadcastMessage("§c§l=== FEHLER ===");
+            Bukkit.broadcastMessage("§cKeine Teams für die Challenge!");
+            Bukkit.broadcastMessage("§7Der Boss muss mitspielen oder es müssen mehr Spieler online sein.");
+
+            activeChallenge = null;
+            plugin.getDataManager().pauseTimer();
+            return;
+        }
+
         activeChallenge.setCurrentPhase(Challenge.ChallengePhase.COMBAT);
         activeChallenge.setPhaseStartTick(plugin.getDataManager().getTimerTicks());
 
         // Erstelle Arenen für alle TEAMS
         arenaManager.createArenasForTeams(activeChallenge);
 
-        // Teleportiere Teams in Arenen und starte Waves
+        // Teleportiere Teams in Arenen
         for (Map.Entry<UUID, List<UUID>> entry : activeChallenge.getTeams().entrySet()) {
             UUID teamId = entry.getKey();
             List<UUID> teamMembers = entry.getValue();
 
-            // Hole Arena für dieses Team
             ArenaInstance arena = arenaManager.getArenaForTeam(teamId);
             if (arena == null) continue;
 
-            // Teleportiere alle Team-Mitglieder
             Location spawnPoint = arena.getSpawnPoint();
             for (UUID playerId : teamMembers) {
                 Player player = Bukkit.getPlayer(playerId);
@@ -184,10 +193,13 @@ public class ChallengeManager {
 
                     player.sendMessage("§c§l=== KAMPFPHASE BEGINNT ===");
                     player.sendMessage("§7Dein Team: §e" + getTeamMemberNames(teamMembers));
+                    player.sendMessage("");
+                    player.sendMessage("§e§lVorbereitung...");
+                    player.sendMessage("§7Die erste Wave startet gleich!");
                 }
             }
 
-            // Starte erste Wave für dieses Team
+            // Starte erste Wave für dieses Team (jetzt MIT 30 Sekunden Delay!)
             waveManager.startWaveForTeam(teamId, 0);
         }
     }
@@ -277,6 +289,9 @@ public class ChallengeManager {
             }
         }
 
+        // NEU: Cleanup WaveManager (entfernt alle Bossbars!)
+        waveManager.cleanupAll();
+
         // Entferne Arenen
         arenaManager.clearArenas();
 
@@ -356,6 +371,8 @@ public class ChallengeManager {
 
         // Stoppe Timer
         plugin.getDataManager().pauseTimer();
+
+        waveManager.cleanupAll();
 
         // Cleanup alle Spieler
         for (UUID playerId : activeChallenge.getParticipants()) {
