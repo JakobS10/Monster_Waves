@@ -48,38 +48,38 @@ public class BossSetupManager {
             challenge.setTeamMode(teamMode);
             boss.sendMessage("§a✓ Team-Modus: §e" + teamMode.name() + " §7(Größe: " + teamMode.getTeamSize() + ")");
 
-            // Schritt 2: Team-Assignment-Mode (Manuell vs Auto)
-            boss.sendMessage("§7Schritt 2: Team-Erstellung");
-            openTeamAssignmentModeGUI(boss, (isManual) -> {
+            // NEU: Schritt 2: Boss-Teilnahme (VOR Team-Creation!)
+            boss.sendMessage("§7Schritt 2: Deine Teilnahme");
+            openParticipationGUI(boss, (participates) -> {
+                challenge.setBossParticipates(participates);
+                boss.sendMessage("§a✓ Du spielst " + (participates ? "MIT" : "NICHT mit"));
 
-                if (isManual) {
-                    // === MANUELL ===
-                    boss.sendMessage("§eManuelles Team-Building wird geöffnet...");
+                // Schritt 3: Team-Assignment-Mode (Manuell vs Auto)
+                boss.sendMessage("§7Schritt 3: Team-Erstellung");
+                openTeamAssignmentModeGUI(boss, (isManual) -> {
 
-                    // Öffne Team-Builder mit Callback
-                    openTeamBuilder(boss, (v) -> {
-                        // Nach Team-Builder weiter
-                        boss.sendMessage("§a✓ Teams manuell erstellt");
-                        continueAfterTeamCreation(boss);
-                    });
+                    if (isManual) {
+                        // === MANUELL ===
+                        boss.sendMessage("§eManuelles Team-Building wird geöffnet...");
 
-                } else {
-                    // === AUTOMATISCH ===
-                    boss.sendMessage("§7Schritt 3: Teilnahme wählen");
+                        // Öffne Team-Builder mit Callback
+                        openTeamBuilder(boss, (v) -> {
+                            // Nach Team-Builder weiter
+                            boss.sendMessage("§a✓ Teams manuell erstellt");
+                            continueAfterTeamCreation(boss);
+                        });
 
-                    openParticipationGUI(boss, (participates) -> {
-                        challenge.setBossParticipates(participates);
-                        boss.sendMessage("§a✓ Du spielst " + (participates ? "MIT" : "NICHT mit"));
-
-                        // Erstelle Teams automatisch
+                    } else {
+                        // === AUTOMATISCH ===
+                        // Erstelle Teams automatisch (Boss-Teilnahme ist schon gesetzt!)
                         boss.sendMessage("§eErstelle Teams automatisch...");
                         challenge.createTeams();
                         boss.sendMessage("§a✓ Teams automatisch erstellt");
 
                         // Weiter
                         continueAfterTeamCreation(boss);
-                    });
-                }
+                    }
+                });
             });
         });
     }
