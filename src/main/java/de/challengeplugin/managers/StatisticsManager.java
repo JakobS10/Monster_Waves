@@ -7,12 +7,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * Verwaltet Statistiken und Auswertung
- * Zeigt Ranglisten nach verschiedenen Kriterien
+ * NEU: Echte Spieler-Köpfe mit SkullMeta statt Steve
  */
 public class StatisticsManager {
 
@@ -26,7 +27,6 @@ public class StatisticsManager {
      * Zeigt Auswertungs-GUI für alle Spieler
      */
     public void showEvaluation(Challenge challenge) {
-        // Broadcast an alle Teilnehmer
         for (UUID playerId : challenge.getParticipants()) {
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
@@ -35,44 +35,47 @@ public class StatisticsManager {
                 player.sendMessage("§6§l=================================");
                 player.sendMessage("");
 
-                // Öffne Auswertungs-GUI
-                openEvaluationGUI(player, challenge);
+                openEvaluationGUI(player, challenge, SortCriteria.FASTEST);
             }
         }
     }
 
     /**
-     * Öffnet Auswertungs-GUI
+     * Öffnet Auswertungs-GUI mit gewähltem Filter
      */
-    public void openEvaluationGUI(Player player, Challenge challenge) {
+    public void openEvaluationGUI(Player player, Challenge challenge, SortCriteria criteria) {
         Inventory inv = Bukkit.createInventory(null, 54, "§6§lChallenge-Auswertung");
 
         // Filter-Buttons
         ItemStack fastestItem = createFilterItem(Material.GOLDEN_BOOTS,
                 "§e§lSchnellster",
-                "§7Sortiert nach kürzester Zeit");
+                "§7Sortiert nach kürzester Zeit",
+                criteria == SortCriteria.FASTEST);
+
         ItemStack leastDeathsItem = createFilterItem(Material.TOTEM_OF_UNDYING,
                 "§a§lWenigste Tode",
-                "§7Sortiert nach geringster Todesanzahl");
+                "§7Sortiert nach geringster Todesanzahl",
+                criteria == SortCriteria.LEAST_DEATHS);
+
         ItemStack leastDamageItem = createFilterItem(Material.SHIELD,
                 "§c§lWenigster Schaden",
-                "§7Sortiert nach geringstem Damage");
+                "§7Sortiert nach geringstem Damage",
+                criteria == SortCriteria.LEAST_DAMAGE);
 
         inv.setItem(10, fastestItem);
         inv.setItem(12, leastDeathsItem);
         inv.setItem(14, leastDamageItem);
 
-        // Standard: Zeige "Schnellste"
-        fillRankingData(inv, challenge, SortCriteria.FASTEST);
+        fillRankingData(inv, challenge, criteria);
 
         player.openInventory(inv);
     }
 
     /**
      * Füllt Ranking-Daten in GUI
+     * NEU: Mit echten Spieler-Köpfen
      */
     private void fillRankingData(Inventory inv, Challenge challenge, SortCriteria criteria) {
-        // Filtere nur Gewinner (completed)
         List<PlayerChallengeData> winners = challenge.getPlayerData().values().stream()
                 .filter(PlayerChallengeData::isHasCompleted)
                 .collect(Collectors.toList());
@@ -91,7 +94,6 @@ public class StatisticsManager {
                 break;
         }
 
-        // Zeige Top 10 (oder weniger)
         int slot = 27;
         int rank = 1;
         for (PlayerChallengeData data : winners) {
@@ -100,9 +102,18 @@ public class StatisticsManager {
             Player p = Bukkit.getPlayer(data.getPlayerId());
             String playerName = p != null ? p.getName() : "Unbekannt";
 
+            // NEU: Echter Spieler-Kopf mit SkullMeta
             ItemStack playerHead = new ItemStack(Material.PLAYER_HEAD);
-            ItemMeta meta = playerHead.getItemMeta();
-            meta.setDisplayName("§e#" + rank + " §7- §6" + playerName);
+            SkullMeta skullMeta = (SkullMeta) playerHead.getItemMeta();
+
+            // Setze Owner für echten Skin
+            if (p != null) {
+                skullMeta.setOwningPlayer(p);
+            }
+
+            // Färbe Platzierung
+            String rankColor = rank == 1 ? "§6" : rank == 2 ? "§7" : rank == 3 ? "§c" : "§e";
+            skullMeta.setDisplayName(rankColor + "#" + rank + " §7- §f" + playerName);
 
             List<String> lore = new ArrayList<>();
             lore.add("");
@@ -122,23 +133,48 @@ public class StatisticsManager {
                 }
             }
 
-            meta.setLore(lore);
-            playerHead.setItemMeta(meta);
+            skullMeta.setLore(lore);
+            playerHead.setItemMeta(skullMeta);
 
             inv.setItem(slot, playerHead);
             slot++;
             rank++;
         }
+
+        if (winners.isEmpty()) {
+            ItemStack noWinner = new ItemStack(Material.BARRIER);
+            ItemMeta meta = noWinner.getItemMeta();
+            meta.setDisplayName("§c§lKeine Gewinner");
+            meta.setLore(Arrays.asList(
+                    "§7Niemand hat die Challenge",
+                    "§7erfolgreich abgeschlossen"
+            ));
+            noWinner.setItemMeta(meta);
+            inv.setItem(31, noWinner);
+        }
     }
 
     /**
-     * Erstellt Filter-Button
+     * Erstellt Filter-Button mit Highlight für aktiven Filter
      */
-    private ItemStack createFilterItem(Material material, String name, String description) {
+    private ItemStack createFilterItem(Material material, String name, String description, boolean isActive) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         meta.setDisplayName(name);
-        meta.setLore(Arrays.asList("", description, "", "§7Klicke zum Anzeigen"));
+
+        List<String> lore = new ArrayList<>();
+        lore.add("");
+        lore.add(description);
+        lore.add("");
+
+        if (isActive) {
+            lore.add("§a§l✓ Aktiv");
+            meta.setEnchantmentGlintOverride(true);
+        } else {
+            lore.add("§7Klicke zum Anzeigen");
+        }
+
+        meta.setLore(lore);
         item.setItemMeta(meta);
         return item;
     }
@@ -151,8 +187,18 @@ public class StatisticsManager {
     }
 
     public enum SortCriteria {
-        FASTEST,
-        LEAST_DEATHS,
-        LEAST_DAMAGE
+        FASTEST("§e§lSchnellster"),
+        LEAST_DEATHS("§a§lWenigste Tode"),
+        LEAST_DAMAGE("§c§lWenigster Schaden");
+
+        private final String displayName;
+
+        SortCriteria(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
     }
 }

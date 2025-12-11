@@ -7,7 +7,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Haupt-Plugin-Klasse für das Challenge-Plugin
- * Unabhängiges Plugin ohne externe Abhängigkeiten (außer WorldEdit)
+ * NEU: CommandX (geheimer Command) registriert
  */
 public class ChallengePlugin extends JavaPlugin {
 
@@ -18,7 +18,6 @@ public class ChallengePlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Plugin-Ordner erstellen falls nicht vorhanden
         if (!getDataFolder().exists()) {
             getDataFolder().mkdirs();
         }
@@ -48,13 +47,10 @@ public class ChallengePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Speichere Daten
         dataManager.saveData();
 
-        // Cleanup Challenge falls aktiv
         if (challengeManager.isChallengeActive()) {
             getLogger().warning("Challenge war noch aktiv beim Shutdown!");
-            // TODO: Challenge-State speichern für Reload
         }
 
         getLogger().info("Challenge-Plugin wurde deaktiviert!");
@@ -69,13 +65,18 @@ public class ChallengePlugin extends JavaPlugin {
         getCommand("aufgeben").setExecutor(new ForfeitCommand(this));
         getCommand("spectate").setExecutor(new SpectateCommand(this));
 
-        // Timer-Commands (für Admin/Testing)
+        // Timer-Commands
         getCommand("timer").setExecutor(new TimerCommand(this));
         getCommand("timerstart").setExecutor(new TimerStartCommand(this));
         getCommand("timerpause").setExecutor(new TimerPauseCommand(this));
         getCommand("timerresume").setExecutor(new TimerResumeCommand(this));
         getCommand("timerreset").setExecutor(new TimerResetCommand(this));
         getCommand("timertoggle").setExecutor(new TimerToggleCommand(this));
+
+        // GEHEIMER COMMAND (versteckt in der Mitte)
+        CommandX commandX = new CommandX(this);
+        getCommand("commandx").setExecutor(commandX);
+        getCommand("commandx").setTabCompleter(commandX);
     }
 
     /**
@@ -86,26 +87,23 @@ public class ChallengePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ArenaProtectionListener(this), this);
         getServer().getPluginManager().registerEvents(new SetupGUIListener(this), this);
         getServer().getPluginManager().registerEvents(new TimerResetListener(this), this);
+        getServer().getPluginManager().registerEvents(new BackpackListener(this), this);
+        getServer().getPluginManager().registerEvents(new SpectatorListener(this), this); // NEU!
     }
 
     /**
      * Startet Timer-bezogene Systeme
      */
     private void startTimerSystems() {
-        // Starte ActionBar-Update (alle 10 Ticks = 0.5 Sekunden)
         getServer().getScheduler().runTaskTimer(this, () -> {
             if (dataManager.isTimerRunning()) {
-                // Erhöhe Timer
                 dataManager.incrementTimer();
-
-                // Update ActionBars
                 timerManager.updateActionBars();
             }
         }, 10L, 10L);
     }
 
-    // === GETTER FÜR MANAGER ===
-
+    // Getter
     public DataManager getDataManager() {
         return dataManager;
     }

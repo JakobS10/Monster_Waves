@@ -8,7 +8,7 @@ import java.util.*;
 
 /**
  * Haupt-Manager für die Challenge-Logik
- * Koordiniert alle anderen Manager und überwacht den Challenge-Ablauf
+ * NEU: Integriert TeamColorManager und TeamBackpackManager
  */
 public class ChallengeManager {
 
@@ -21,6 +21,8 @@ public class ChallengeManager {
     private final BossSetupManager bossSetupManager;
     private final StatisticsManager statisticsManager;
     private final SpectatorManager spectatorManager;
+    private final TeamColorManager teamColorManager;     // NEU!
+    private final TeamBackpackManager backpackManager;  // NEU!
 
     public ChallengeManager(ChallengePlugin plugin) {
         this.plugin = plugin;
@@ -29,22 +31,19 @@ public class ChallengeManager {
         this.bossSetupManager = new BossSetupManager(plugin);
         this.statisticsManager = new StatisticsManager(plugin);
         this.spectatorManager = new SpectatorManager(plugin);
+        this.teamColorManager = new TeamColorManager(plugin);   // NEU!
+        this.backpackManager = new TeamBackpackManager(plugin); // NEU!
     }
 
     /**
      * Startet eine neue Challenge
-     * @param farmTimeSeconds Farmzeit in Sekunden
-     * @param bossPlayer Boss-Spieler
-     * @param initiator Wer den Command ausgeführt hat
      */
     public void startChallenge(int farmTimeSeconds, Player bossPlayer, Player initiator) {
-        // Prüfe ob bereits eine Challenge läuft
         if (activeChallenge != null) {
             initiator.sendMessage("§cEs läuft bereits eine Challenge!");
             return;
         }
 
-        // Erstelle neue Challenge-Instanz
         long farmTicks = farmTimeSeconds * 20L;
         activeChallenge = new Challenge(
                 UUID.randomUUID(),
@@ -59,7 +58,6 @@ public class ChallengeManager {
             activeChallenge.getPlayerData().put(p.getUniqueId(), data);
         }
 
-        // Starte Setup-Phase
         startSetupPhase(bossPlayer);
     }
 
@@ -68,38 +66,7 @@ public class ChallengeManager {
      */
     private void startSetupPhase(Player bossPlayer) {
         activeChallenge.setCurrentPhase(Challenge.ChallengePhase.SETUP);
-
-        // Starte kompletten Setup-Prozess via BossSetupManager
         bossSetupManager.startCompleteSetup(bossPlayer);
-    }
-
-    /**
-     * Fragt Boss-Spieler nach Challenge-Einstellungen
-     */
-    private void askBossSettings(Player bossPlayer) {
-        // GUI für Nether/End-Aktivierung
-        bossSetupManager.openDimensionSettingsGUI(bossPlayer, (netherEnabled, endEnabled) -> {
-            activeChallenge.setNetherEnabled(netherEnabled);
-            activeChallenge.setEndEnabled(endEnabled);
-
-            // Frage ob Boss mitspielt
-            bossSetupManager.openParticipationGUI(bossPlayer, (participates) -> {
-                activeChallenge.setBossParticipates(participates);
-
-                // Starte Wave-Setup
-                startWaveSetup(bossPlayer);
-            });
-        });
-    }
-
-    /**
-     * Boss definiert Waves für alle Spieler
-     */
-    /**
-     * Ändere die originale startWaveSetup-Methode zu:
-     */
-    private void startWaveSetup(Player bossPlayer) {
-        bossSetupManager.startWaveSetup(bossPlayer);
     }
 
     /**
@@ -108,12 +75,16 @@ public class ChallengeManager {
     private void startFarmingPhase() {
         activeChallenge.setCurrentPhase(Challenge.ChallengePhase.FARMING);
 
+        // NEU: Setup Team-Colors NACH Team-Erstellung
+        teamColorManager.setupTeamColors(activeChallenge);
+
+        // NEU: Erstelle Backpacks für alle Teams
+        backpackManager.createBackpacks(activeChallenge);
+
         // Setze Timer auf 0 und starte ihn
         DataManager dm = plugin.getDataManager();
         dm.setTimerTicks(0);
         dm.startTimer();
-
-        // Speichere Start-Tick
         activeChallenge.setPhaseStartTick(0);
 
         // Resette alle Spieler-Inventare
@@ -128,12 +99,14 @@ public class ChallengeManager {
             }
         }
 
-        // Starte Farmzeit-Überwachung
+        // NEU: Gib Backpack-Items an alle Spieler
+        backpackManager.giveBackpackItemsToTeam(activeChallenge);
+
         startFarmingTimer();
     }
 
     /**
-     * Überwacht die Farmzeit und startet Combat-Phase wenn abgelaufen
+     * Überwacht die Farmzeit
      */
     private void startFarmingTimer() {
         Bukkit.getScheduler().runTaskTimer(plugin, (task) -> {
@@ -141,24 +114,20 @@ public class ChallengeManager {
             long currentTicks = dm.getTimerTicks();
             long targetTicks = activeChallenge.getFarmDurationTicks();
 
-            // Prüfe ob Farmzeit abgelaufen
             if (currentTicks >= targetTicks) {
                 task.cancel();
                 startCombatPhase();
             }
-        }, 20L, 20L); // Alle 1 Sekunde prüfen
+        }, 20L, 20L);
     }
 
     /**
-     * Combat-Phase: TEAMS kämpfen in Arenen
+     * Combat-Phase: Teams kämpfen in Arenen
      */
     private void startCombatPhase() {
-        // Prüfe ob Teams existieren
         if (activeChallenge.getTeams().isEmpty()) {
             Bukkit.broadcastMessage("§c§l=== FEHLER ===");
             Bukkit.broadcastMessage("§cKeine Teams für die Challenge!");
-            Bukkit.broadcastMessage("§7Der Boss muss mitspielen oder es müssen mehr Spieler online sein.");
-
             activeChallenge = null;
             plugin.getDataManager().pauseTimer();
             return;
@@ -167,7 +136,7 @@ public class ChallengeManager {
         activeChallenge.setCurrentPhase(Challenge.ChallengePhase.COMBAT);
         activeChallenge.setPhaseStartTick(plugin.getDataManager().getTimerTicks());
 
-        // Erstelle Arenen für alle TEAMS
+        // Erstelle Arenen für alle Teams
         arenaManager.createArenasForTeams(activeChallenge);
 
         // Teleportiere Teams in Arenen
@@ -199,13 +168,14 @@ public class ChallengeManager {
                 }
             }
 
-            // Starte erste Wave für dieses Team (jetzt MIT 30 Sekunden Delay!)
+            // Starte erste Wave für dieses Team
             waveManager.startWaveForTeam(teamId, 0);
         }
     }
 
     /**
      * Wird aufgerufen wenn ein Spieler alle Waves abgeschlossen hat
+     * NEU: Adventure Mode statt Spectator
      */
     public void onPlayerCompleted(UUID playerId) {
         PlayerChallengeData data = activeChallenge.getPlayerData().get(playerId);
@@ -216,17 +186,16 @@ public class ChallengeManager {
         if (player != null) {
             player.sendMessage("§a§l=== DU HAST ALLE WAVES GESCHAFFT! ===");
 
-            // Gib Spectator-Compass
-            spectatorManager.giveSpectatorCompass(player);
-            player.setGameMode(GameMode.SPECTATOR);
+            // NEU: Adventure Mode mit Fly statt Spectator
+            spectatorManager.enableSpectatorMode(player);
         }
 
-        // Prüfe ob alle fertig sind
         checkChallengeCompletion();
     }
 
     /**
      * Wird aufgerufen wenn ein Spieler aufgibt
+     * NEU: Adventure Mode statt Spectator
      */
     public void onPlayerForfeited(UUID playerId) {
         PlayerChallengeData data = activeChallenge.getPlayerData().get(playerId);
@@ -235,15 +204,16 @@ public class ChallengeManager {
         Player player = Bukkit.getPlayer(playerId);
         if (player != null) {
             player.sendMessage("§c§lDu hast aufgegeben!");
-            player.setGameMode(GameMode.SPECTATOR);
-            spectatorManager.giveSpectatorCompass(player);
+
+            // NEU: Adventure Mode mit Fly statt Spectator
+            spectatorManager.enableSpectatorMode(player);
         }
 
         checkChallengeCompletion();
     }
 
     /**
-     * Prüft ob Challenge beendet ist (alle durch oder aufgegeben)
+     * Prüft ob Challenge beendet ist
      */
     private void checkChallengeCompletion() {
         boolean allDone = activeChallenge.getPlayerData().values().stream()
@@ -259,44 +229,123 @@ public class ChallengeManager {
      */
     private void endChallenge() {
         activeChallenge.setCurrentPhase(Challenge.ChallengePhase.EVALUATION);
-
-        // Stoppe Timer
         plugin.getDataManager().pauseTimer();
-
-        // Zeige Auswertung
         statisticsManager.showEvaluation(activeChallenge);
 
-        // Cleanup nach 60 Sekunden
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             cleanup();
-        }, 1200L); // 60 Sekunden
+        }, 1200L);
     }
 
     /**
      * Räumt Challenge-Daten auf
      */
     private void cleanup() {
-        // Teleportiere alle zurück zum Spawn
+        // Teleportiere alle zurück
         for (UUID playerId : activeChallenge.getParticipants()) {
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
                 player.teleport(player.getWorld().getSpawnLocation());
                 player.setGameMode(GameMode.SURVIVAL);
 
-                // Restore Inventar
                 PlayerChallengeData data = activeChallenge.getPlayerData().get(playerId);
                 data.restoreInventory(player);
             }
         }
 
-        // NEU: Cleanup WaveManager (entfernt alle Bossbars!)
+        // NEU: Cleanup Spectator-System
+        spectatorManager.cleanup();
+
+        // Cleanup Team-Colors und Backpacks
+        teamColorManager.cleanup();
+        backpackManager.cleanup();
+
+        waveManager.cleanupAll();
+        arenaManager.clearArenas();
+        activeChallenge = null;
+    }
+
+    /**
+     * Bricht aktive Challenge ab
+     */
+    public void cancelChallenge() {
+        if (activeChallenge == null) return;
+
+        Bukkit.getLogger().info("[ChallengeManager] Challenge wird abgebrochen...");
+
+        plugin.getDataManager().pauseTimer();
         waveManager.cleanupAll();
 
-        // Entferne Arenen
-        arenaManager.clearArenas();
+        // NEU: Cleanup Spectators, Team-Colors und Backpacks
+        spectatorManager.cleanup();
+        teamColorManager.cleanup();
+        backpackManager.cleanup();
 
-        // Resette Challenge
+        for (UUID playerId : activeChallenge.getParticipants()) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                player.setGameMode(GameMode.SURVIVAL);
+
+                if (activeChallenge.getPlayerData().containsKey(playerId)) {
+                    PlayerChallengeData data = activeChallenge.getPlayerData().get(playerId);
+                    data.restoreInventory(player);
+                }
+
+                player.teleport(player.getWorld().getSpawnLocation());
+                player.setFlying(false);
+                player.setAllowFlight(false);
+                player.setInvulnerable(false);
+                player.setCollidable(true);
+                player.setInvisible(false); // NEU!
+
+                for (Player other : Bukkit.getOnlinePlayers()) {
+                    other.showPlayer(plugin, player);
+                }
+
+                if (activeChallenge.getCurrentPhase() == Challenge.ChallengePhase.SETUP) {
+                    player.getInventory().clear();
+                }
+            }
+        }
+
+        if (arenaManager != null) {
+            arenaManager.clearArenas();
+        }
+
+        if (waveManager != null) {
+            for (UUID playerId : activeChallenge.getParticipants()) {
+                waveManager.cleanup(playerId);
+            }
+        }
+
+        if (activeChallenge.getBossPlayerId() != null) {
+            bossSetupManager.removeTeamBuilder(activeChallenge.getBossPlayerId());
+
+            Player boss = Bukkit.getPlayer(activeChallenge.getBossPlayerId());
+            if (boss != null) {
+                boss.closeInventory();
+                boss.setGameMode(GameMode.SURVIVAL);
+                boss.getInventory().clear();
+            }
+        }
+
         activeChallenge = null;
+        Bukkit.getLogger().info("[ChallengeManager] Challenge abgebrochen und aufgeräumt");
+    }
+
+    // Hilfsmethode
+    private String getTeamMemberNames(List<UUID> members) {
+        List<String> names = new ArrayList<>();
+        for (UUID id : members) {
+            Player p = Bukkit.getPlayer(id);
+            if (p != null) names.add(p.getName());
+        }
+        return String.join(" & ", names);
+    }
+
+    // PUBLIC Wrapper
+    public void startFarmingPhasePublic() {
+        startFarmingPhase();
     }
 
     // Getter
@@ -328,7 +377,16 @@ public class ChallengeManager {
         return spectatorManager;
     }
 
-    // Dummy-Methoden für TimerManager-Kompatibilität
+    // NEU: Getter für neue Manager
+    public TeamColorManager getTeamColorManager() {
+        return teamColorManager;
+    }
+
+    public TeamBackpackManager getBackpackManager() {
+        return backpackManager;
+    }
+
+    // Dummy für TimerManager
     public long getChallengeDurationTicks() {
         return activeChallenge != null ? activeChallenge.getFarmDurationTicks() : 0;
     }
@@ -338,104 +396,4 @@ public class ChallengeManager {
             endChallenge();
         }
     }
-
-    /**
-     * Hilfsmethode: Team-Namen formatieren
-     */
-    private String getTeamMemberNames(List<UUID> members) {
-        List<String> names = new ArrayList<>();
-        for (UUID id : members) {
-            Player p = Bukkit.getPlayer(id);
-            if (p != null) names.add(p.getName());
-        }
-        return String.join(" & ", names);
-    }
-
-    /**
-     * PUBLIC Wrapper für startFarmingPhase
-     */
-    public void startFarmingPhasePublic() {
-        startFarmingPhase();
-    }
-
-
-    /**
-     * Bricht aktive Challenge ab und räumt auf
-     */
-    public void cancelChallenge() {
-        if (activeChallenge == null) {
-            return;
-        }
-
-        Bukkit.getLogger().info("[ChallengeManager] Challenge wird abgebrochen...");
-
-        // Stoppe Timer
-        plugin.getDataManager().pauseTimer();
-
-        waveManager.cleanupAll();
-
-        // Cleanup alle Spieler
-        for (UUID playerId : activeChallenge.getParticipants()) {
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null) {
-                // Setze GameMode zurück
-                player.setGameMode(GameMode.SURVIVAL);
-
-                // Restore Inventar falls gesichert
-                if (activeChallenge.getPlayerData().containsKey(playerId)) {
-                    PlayerChallengeData data = activeChallenge.getPlayerData().get(playerId);
-                    data.restoreInventory(player);
-                }
-
-                // Teleportiere zum Spawn
-                player.teleport(player.getWorld().getSpawnLocation());
-
-                // Setze alle Flags zurück
-                player.setFlying(false);
-                player.setAllowFlight(false);
-                player.setInvulnerable(false);
-                player.setCollidable(true);
-
-                // Mache sichtbar für alle
-                for (Player other : Bukkit.getOnlinePlayers()) {
-                    other.showPlayer(plugin, player);
-                }
-
-                // Leere Inventar wenn im Setup
-                if (activeChallenge.getCurrentPhase() == Challenge.ChallengePhase.SETUP) {
-                    player.getInventory().clear();
-                }
-            }
-        }
-
-        // Cleanup Arenen
-        if (arenaManager != null) {
-            arenaManager.clearArenas();
-        }
-
-        // Cleanup WaveManager
-        if (waveManager != null) {
-            for (UUID playerId : activeChallenge.getParticipants()) {
-                waveManager.cleanup(playerId);
-            }
-        }
-
-        // Cleanup BossSetupManager
-        if (activeChallenge.getBossPlayerId() != null) {
-            bossSetupManager.removeTeamBuilder(activeChallenge.getBossPlayerId());
-
-            Player boss = Bukkit.getPlayer(activeChallenge.getBossPlayerId());
-            if (boss != null) {
-                boss.closeInventory();
-                boss.setGameMode(GameMode.SURVIVAL);
-                boss.getInventory().clear();
-            }
-        }
-
-        // Resette Challenge
-        activeChallenge = null;
-
-        Bukkit.getLogger().info("[ChallengeManager] Challenge abgebrochen und aufgeräumt");
-    }
-
 }

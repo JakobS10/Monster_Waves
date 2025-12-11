@@ -2,12 +2,13 @@ package de.challengeplugin.commands;
 
 import de.challengeplugin.ChallengePlugin;
 import de.challengeplugin.models.Challenge;
+import de.challengeplugin.models.PlayerChallengeData;
 import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 
 /**
  * Command: /aufgeben
- * Spieler gibt Challenge auf
+ * FIX: Spieler gibt nur SEINE aktuelle Wave auf, nicht die nächste
  */
 public class ForfeitCommand implements CommandExecutor {
 
@@ -34,6 +35,23 @@ public class ForfeitCommand implements CommandExecutor {
 
         if (challenge.getCurrentPhase() != Challenge.ChallengePhase.COMBAT) {
             player.sendMessage("§cDu kannst nur während der Kampfphase aufgeben!");
+            return true;
+        }
+
+        PlayerChallengeData data = challenge.getPlayerData().get(player.getUniqueId());
+        if (data == null) {
+            player.sendMessage("§cDu nimmst nicht an der Challenge teil!");
+            return true;
+        }
+
+        // Prüfe ob Spieler bereits aufgegeben oder fertig ist
+        if (data.isHasForfeited()) {
+            player.sendMessage("§cDu hast bereits aufgegeben!");
+            return true;
+        }
+
+        if (data.isHasCompleted()) {
+            player.sendMessage("§cDu hast die Challenge bereits abgeschlossen!");
             return true;
         }
 

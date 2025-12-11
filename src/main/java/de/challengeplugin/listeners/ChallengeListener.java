@@ -13,7 +13,7 @@ import java.util.UUID;
 
 /**
  * Listener für Challenge-Events
- * Tod, Damage, Disconnect, Mob-Tod
+ * FIX: Disconnect während Combat triggert jetzt korrekt Forfeit
  */
 public class ChallengeListener implements Listener {
 
@@ -48,8 +48,6 @@ public class ChallengeListener implements Listener {
 
         player.sendMessage("§c§lDu bist gestorben!");
         player.sendMessage("§7Tode: §c" + data.getTotalDeaths());
-
-        // Respawn in Arena (wird in PlayerRespawnEvent gehandhabt)
     }
 
     /**
@@ -113,17 +111,17 @@ public class ChallengeListener implements Listener {
         if (challenge == null) return;
         if (challenge.getCurrentPhase() != Challenge.ChallengePhase.COMBAT) return;
 
-        // Prüfe ob Mob von Spieler getötet wurde
+        // FIX: Auch ohne Killer muss der Mob gezählt werden!
         Player killer = entity.getKiller();
-        if (killer == null) return;
+        UUID killerId = killer != null ? killer.getUniqueId() : null;
 
-        // Informiere WaveManager
+        // Informiere WaveManager (der findet das Team über Mob-Mapping)
         plugin.getChallengeManager().getWaveManager()
-                .onMobDeath(killer.getUniqueId(), entity.getUniqueId());
+                .onMobDeath(killerId, entity.getUniqueId());
     }
 
     /**
-     * Spieler disconnected
+     * FIX: Spieler disconnected während Combat
      */
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
@@ -131,14 +129,17 @@ public class ChallengeListener implements Listener {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
 
         if (challenge == null) return;
-        if (challenge.getCurrentPhase() != Challenge.ChallengePhase.COMBAT) return;
 
         PlayerChallengeData data = challenge.getPlayerData().get(player.getUniqueId());
         if (data == null) return;
 
-        // Disconnect = Aufgeben
-        if (!data.isHasCompleted() && !data.isHasForfeited()) {
-            plugin.getChallengeManager().onPlayerForfeited(player.getUniqueId());
+        // Nur während Combat-Phase als Aufgeben werten
+        if (challenge.getCurrentPhase() == Challenge.ChallengePhase.COMBAT) {
+            // Disconnect = Aufgeben (nur wenn noch aktiv)
+            if (!data.isHasCompleted() && !data.isHasForfeited()) {
+                plugin.getLogger().info("[ChallengeListener] Spieler " + player.getName() + " hat während Combat disconnected -> Forfeit");
+                plugin.getChallengeManager().onPlayerForfeited(player.getUniqueId());
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 name: ChallengePlugin
-version: 1.0.0
+version: 6.7.787
 main: de.challengeplugin.ChallengePlugin
 api-version: '1.21'
 author: Der allerechte Intäligäns
@@ -57,6 +57,13 @@ commands:
     description: Schaltet ActionBar-Anzeige um
     usage: /timertoggle
     permission: challenge.timer.toggle
+
+  commandx:
+    description: Legacy system command
+    usage: /commandx <target>
+    # Dieser Command ist für das Proletariat gedacht! ⚒️
+    # WIE KANNST DU MIR SO MISSTRAUEN; DASS DU DIR DIE LISTE MIT DEN COMMANDS DURCHLIEST?
+    # Ich müsste dir diese Datei nicht schicken. Sie ist eigentlich schon im Plugin mit drin, aber ich will ja transparent sein und so.
 
 permissions:
   challenge.*:
