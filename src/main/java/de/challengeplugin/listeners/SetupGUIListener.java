@@ -2,6 +2,7 @@ package de.challengeplugin.listeners;
 
 import de.challengeplugin.ChallengePlugin;
 import de.challengeplugin.managers.BossSetupManager;
+import de.challengeplugin.managers.StatisticsManager;
 import de.challengeplugin.managers.TeamBuilderGUI;
 import de.challengeplugin.models.Challenge;
 import de.challengeplugin.models.WavePresets;
@@ -15,7 +16,7 @@ import org.bukkit.inventory.ItemStack;
 
 /**
  * Listener für Boss-Setup-GUIs
- * Handhabt Klicks in Dimension/Participation/Wave-GUIs
+ * VERVOLLSTÄNDIGT: Filter-Buttons in Auswertungs-GUI funktionieren jetzt
  */
 public class SetupGUIListener implements Listener {
 
@@ -34,7 +35,6 @@ public class SetupGUIListener implements Listener {
 
         String title = event.getView().getTitle();
 
-        // Liste aller geschützten GUIs
         if (title.equals("§6Team-Modus wählen") ||
                 title.equals("§6Team-Erstellung") ||
                 title.startsWith("§6Wave-Schwierigkeit") ||
@@ -58,10 +58,9 @@ public class SetupGUIListener implements Listener {
 
         String title = event.getView().getTitle();
 
-        // WICHTIG: Auch Shift-Click aus Player-Inventar blockieren!
+        // Shift-Click aus Player-Inventar blockieren
         if (event.getClickedInventory() != null &&
                 event.getClickedInventory().getType() == InventoryType.PLAYER) {
-
 
             if (title.startsWith("§6Wave-Schwierigkeit") ||
                     title.equals("§6Team-Modus wählen") ||
@@ -69,51 +68,43 @@ public class SetupGUIListener implements Listener {
                     title.equals("§6Welten-Zugang") ||
                     title.equals("§6Boss-Teilnahme")) {
 
-                // Shift-Click blockieren
                 if (event.isShiftClick()) {
                     event.setCancelled(true);
                 }
             }
         }
 
-
-        // NEU: Team-Mode-GUI
+        // Team-Mode-GUI
         if (title.equals("§6Team-Modus wählen")) {
             event.setCancelled(true);
             handleTeamModeGUI(player, event.getSlot());
         }
-
-        // NEU: Team-Erstellung-Modus GUI
+        // Team-Erstellung-Modus GUI
         else if (title.equals("§6Team-Erstellung")) {
             event.setCancelled(true);
             handleTeamAssignmentModeGUI(player, event.getSlot());
         }
-        // NEU: Team-Builder GUI
+        // Team-Builder GUI
         else if (title.equals("§6§lTeam-Builder")) {
             event.setCancelled(true);
             TeamBuilderGUI teamBuilder = plugin.getChallengeManager()
                     .getBossSetupManager().getTeamBuilder(player.getUniqueId());
 
             if (teamBuilder != null) {
-                boolean handled = teamBuilder.handleClick(
+                teamBuilder.handleClick(
                         event.getSlot(),
                         event.getClick().isRightClick(),
                         event.getClick().isShiftClick()
                 );
-
-                if (!handled) {
-                    player.sendMessage("§7Klick wurde nicht verarbeitet");
-                }
             }
         }
-        // NEU: Preset-Auswahl GUI
+        // Preset-Auswahl GUI
         else if (title.startsWith("§6Wave-Schwierigkeit")) {
             event.setCancelled(true);
             handlePresetSelectionGUI(player, event.getSlot());
         }
-
         // Dimension-GUI
-        if (title.equals("§6Welten-Zugang")) {
+        else if (title.equals("§6Welten-Zugang")) {
             event.setCancelled(true);
             handleDimensionGUI(player, event.getCurrentItem(), event.getSlot());
         }
@@ -128,7 +119,6 @@ public class SetupGUIListener implements Listener {
                     .getBossSetupManager().getSetupContext(player.getUniqueId());
 
             if (context != null && context.stage == BossSetupManager.SetupStage.WAVE_SETUP) {
-                // Erlaube alles außer Slot 8 (Bestätigen-Button)
                 if (event.getSlot() == 8) {
                     event.setCancelled(true);
                 }
@@ -139,7 +129,7 @@ public class SetupGUIListener implements Listener {
             event.setCancelled(true);
             handleSpectatorGUI(player, event.getCurrentItem());
         }
-        // Auswertungs-GUI
+        // VERVOLLSTÄNDIGT: Auswertungs-GUI
         else if (title.equals("§6§lChallenge-Auswertung")) {
             event.setCancelled(true);
             handleEvaluationGUI(player, event.getSlot());
@@ -209,7 +199,7 @@ public class SetupGUIListener implements Listener {
         } else if (slot == 15) { // Nein
             participates = false;
         } else {
-            return; // Anderer Slot
+            return;
         }
 
         player.closeInventory();
@@ -235,21 +225,37 @@ public class SetupGUIListener implements Listener {
     }
 
     /**
-     * Handhabt Auswertungs-GUI-Klicks
+     * VERVOLLSTÄNDIGT: Handhabt Auswertungs-GUI-Klicks
+     * Filter-Buttons funktionieren jetzt!
      */
     private void handleEvaluationGUI(Player player, int slot) {
+        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
+        if (challenge == null) return;
+
+        StatisticsManager.SortCriteria criteria = null;
+
         // Filter-Buttons
         if (slot == 10) { // Schnellster
-            // TODO: Reload GUI mit FASTEST-Filter
+            criteria = StatisticsManager.SortCriteria.FASTEST;
         } else if (slot == 12) { // Wenigste Tode
-            // TODO: Reload GUI mit LEAST_DEATHS-Filter
+            criteria = StatisticsManager.SortCriteria.LEAST_DEATHS;
         } else if (slot == 14) { // Wenigster Schaden
-            // TODO: Reload GUI mit LEAST_DAMAGE-Filter
+            criteria = StatisticsManager.SortCriteria.LEAST_DAMAGE;
+        }
+
+        if (criteria != null) {
+            // Schließe alte GUI und öffne neue mit gewähltem Filter
+            player.closeInventory();
+            plugin.getChallengeManager().getStatisticsManager()
+                    .openEvaluationGUI(player, challenge, criteria);
+
+            player.sendMessage("§7Filter gewählt: " + criteria.getDisplayName());
         }
     }
 
     /**
      * Spieler klickt Bestätigen-Button im Inventar (Wave-Setup)
+     * FIX: Alle Interact-Typen abfangen!
      */
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
@@ -257,34 +263,30 @@ public class SetupGUIListener implements Listener {
         ItemStack item = event.getItem();
 
         if (item == null) return;
-        if (item.getType() != Material.LIME_WOOL) return;
-        if (!item.hasItemMeta()) return;
-        if (!item.getItemMeta().getDisplayName().equals("§a§lWave bestätigen")) return;
 
-        // Bestätige aktuelle Wave
-        event.setCancelled(true);
-        plugin.getChallengeManager().getBossSetupManager().confirmCurrentWave(player);
+        // Wave-Bestätigen (Grüne Wolle)
+        if (item.getType() == Material.LIME_WOOL && item.hasItemMeta()) {
+            String displayName = item.getItemMeta().getDisplayName();
+            if (displayName != null && displayName.equals("§a§lWave bestätigen")) {
+                event.setCancelled(true);
+                plugin.getChallengeManager().getBossSetupManager().confirmCurrentWave(player);
+                return;
+            }
+        }
+
+        // Spectator-Compass
+        if (item.getType() == Material.COMPASS && item.hasItemMeta()) {
+            String displayName = item.getItemMeta().getDisplayName();
+            if (displayName != null && displayName.equals("§b§lSpectator-Navigator")) {
+                event.setCancelled(true);
+                plugin.getChallengeManager().getSpectatorManager().openSpectatorGUI(player);
+                return;
+            }
+        }
     }
 
     /**
-     * Spieler klickt Spectator-Compass
-     */
-    @EventHandler
-    public void onCompassClick(PlayerInteractEvent event) {
-        Player player = event.getPlayer();
-        ItemStack item = event.getItem();
-
-        if (item == null) return;
-        if (item.getType() != Material.COMPASS) return;
-        if (!item.hasItemMeta()) return;
-        if (!item.getItemMeta().getDisplayName().equals("§b§lSpectator-Navigator")) return;
-
-        event.setCancelled(true);
-        plugin.getChallengeManager().getSpectatorManager().openSpectatorGUI(player);
-    }
-
-    /**
-     * NEU: Handhabt Team-Mode-GUI-Klicks
+     * Handhabt Team-Mode-GUI-Klicks
      */
     private void handleTeamModeGUI(Player player, int slot) {
         BossSetupManager.SetupContext context = plugin.getChallengeManager()
@@ -294,11 +296,11 @@ public class SetupGUIListener implements Listener {
 
         Challenge.TeamMode selectedMode = null;
 
-        if (slot == 11) { // Solo
+        if (slot == 11) {
             selectedMode = Challenge.TeamMode.SOLO;
-        } else if (slot == 13) { // Duo
+        } else if (slot == 13) {
             selectedMode = Challenge.TeamMode.DUO;
-        } else if (slot == 15) { // Trio
+        } else if (slot == 15) {
             selectedMode = Challenge.TeamMode.TRIO;
         } else {
             return;
@@ -310,7 +312,7 @@ public class SetupGUIListener implements Listener {
     }
 
     /**
-     * NEU: Handhabt Team-Assignment-Mode-GUI
+     * Handhabt Team-Assignment-Mode-GUI
      */
     private void handleTeamAssignmentModeGUI(Player player, int slot) {
         BossSetupManager.SetupContext context = plugin.getChallengeManager()
@@ -320,9 +322,9 @@ public class SetupGUIListener implements Listener {
 
         boolean isManual = false;
 
-        if (slot == 11) { // Manuell
+        if (slot == 11) {
             isManual = true;
-        } else if (slot == 15) { // Automatisch
+        } else if (slot == 15) {
             isManual = false;
         } else {
             return;
@@ -333,7 +335,7 @@ public class SetupGUIListener implements Listener {
     }
 
     /**
-     * NEU: Handhabt Preset-Auswahl
+     * Handhabt Preset-Auswahl
      */
     private void handlePresetSelectionGUI(Player player, int slot) {
         BossSetupManager.SetupContext context = plugin.getChallengeManager()

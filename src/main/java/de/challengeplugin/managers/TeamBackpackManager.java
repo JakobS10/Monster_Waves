@@ -29,11 +29,13 @@ public class TeamBackpackManager {
 
     /**
      * Erstellt Backpacks für alle Teams
+     * WICHTIG: Jedes Team bekommt seinen eigenen, individuellen Backpack!
      */
     public void createBackpacks(Challenge challenge) {
         int teamNumber = 1;
         for (UUID teamId : challenge.getTeams().keySet()) {
             // Erstelle Inventory (Double Chest = 54 Slots)
+            // JEDES TEAM HAT SEINEN EIGENEN BACKPACK!
             Inventory backpack = Bukkit.createInventory(
                     null,
                     54,
@@ -41,13 +43,14 @@ public class TeamBackpackManager {
             );
 
             teamBackpacks.put(teamId, backpack);
-            plugin.getLogger().info("[TeamBackpackManager] Backpack für Team " + teamNumber + " erstellt");
+            plugin.getLogger().info("[TeamBackpackManager] Backpack für Team " + teamNumber + " erstellt (INDIVIDUELL)");
             teamNumber++;
         }
     }
 
     /**
      * Öffnet Backpack für Spieler
+     * Zeigt IMMER den Backpack des eigenen Teams an!
      */
     public void openBackpack(Player player) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
@@ -63,7 +66,7 @@ public class TeamBackpackManager {
             return;
         }
 
-        // Hole Backpack
+        // Hole Backpack (TEAM-SPEZIFISCH!)
         Inventory backpack = teamBackpacks.get(teamId);
         if (backpack == null) {
             player.sendMessage("§cKein Backpack für dein Team gefunden!");
@@ -74,7 +77,8 @@ public class TeamBackpackManager {
         player.openInventory(backpack);
         openBackpacks.put(player.getUniqueId(), teamId);
 
-        player.sendMessage("§aTeam-Backpack geöffnet!");
+        player.sendMessage("§a§lTeam-Backpack geöffnet!");
+        player.sendMessage("§7Alle Team-Mitglieder können auf diesen Backpack zugreifen");
     }
 
     /**
@@ -123,6 +127,7 @@ public class TeamBackpackManager {
         }
 
         plugin.getLogger().info("[TeamBackpackManager] Backpack-Items an alle Spieler gegeben");
+        plugin.getLogger().info("[TeamBackpackManager] HINWEIS: Jedes Team hat seinen EIGENEN Backpack!");
     }
 
     /**

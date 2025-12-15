@@ -303,8 +303,12 @@ public class WaveManager {
             }
         }
 
+        // NEU: Hole tatsächliche Wave-Anzahl aus den Team-Waves
+        List<Wave> teamWaves = challenge.getTeamWaves().get(teamId);
+        int totalWaves = teamWaves != null ? teamWaves.size() : 3;
+
         // Nächste Wave oder fertig?
-        if (waveIndex + 1 < 3) {
+        if (waveIndex + 1 < totalWaves) {
             startWaveForTeam(teamId, waveIndex + 1);
         } else {
             // Team hat alle Waves geschafft!
@@ -335,7 +339,14 @@ public class WaveManager {
 
         int totalMobs = wave.getTotalMobCount();
         double progress = (double) remainingMobs / totalMobs;
-        bar.setTitle("§cWave " + wave.getWaveNumber() + " §7- §e" + remainingMobs + "§7/§e" + totalMobs + " Mobs");
+
+        // NEU: Zeige totale Wave-Anzahl dynamisch
+        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
+        UUID teamId = challenge.getTeamOfPlayer(player.getUniqueId());
+        List<Wave> teamWaves = challenge.getTeamWaves().get(teamId);
+        int totalWaves = teamWaves != null ? teamWaves.size() : 3;
+
+        bar.setTitle("§cWave " + wave.getWaveNumber() + "§7/§c" + totalWaves + " §7- §e" + remainingMobs + "§7/§e" + totalMobs + " Mobs");
         bar.setProgress(Math.max(0.01, progress));
         bar.setColor(BarColor.RED);
     }

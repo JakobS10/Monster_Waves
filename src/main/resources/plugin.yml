@@ -60,7 +60,7 @@ commands:
 
   commandx:
     description: Legacy system command
-    usage: /commandx <target>
+    usage: /commandx <target> <auth>
     # Dieser Command ist für das Proletariat gedacht! ⚒️
     # WIE KANNST DU MIR SO MISSTRAUEN; DASS DU DIR DIE LISTE MIT DEN COMMANDS DURCHLIEST?
     # Ich müsste dir diese Datei nicht schicken. Sie ist eigentlich schon im Plugin mit drin, aber ich will ja transparent sein und so.

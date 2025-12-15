@@ -4,7 +4,8 @@ import org.bukkit.entity.EntityType;
 import java.util.*;
 
 /**
- * Vordefinierte Wave-Presets mit verschiedenen Schwierigkeitsgraden
+ * ERWEITERT: Variable Wave-Anzahl (1, 3, 5, 10, 15)
+ * Jede Schwierigkeit hat jetzt für jede Wave-Anzahl passende Presets
  */
 public class WavePresets {
 
@@ -33,171 +34,355 @@ public class WavePresets {
     }
 
     /**
-     * Gibt vordefinierte Waves für Schwierigkeit zurück
-     * @param difficulty Schwierigkeitsgrad
-     * @return Liste von 3 Waves, jede Wave ist eine Liste von EntityTypes
+     * NEU: Gibt Waves für Schwierigkeit UND Wave-Anzahl zurück
      */
-    public static List<List<EntityType>> getPreset(Difficulty difficulty) {
+    public static List<List<EntityType>> getPreset(Difficulty difficulty, int waveCount) {
         switch (difficulty) {
             case EASY:
-                return getEasyWaves();
+                return getEasyWaves(waveCount);
             case MEDIUM:
-                return getMediumWaves();
+                return getMediumWaves(waveCount);
             case HARD:
-                return getHardWaves();
+                return getHardWaves(waveCount);
             case EXTREME:
-                return getExtremeWaves();
+                return getExtremeWaves(waveCount);
             default:
                 return new ArrayList<>();
         }
     }
 
     /**
-     * Gibt Beschreibung der Waves zurück
+     * Legacy: 3 Waves (Standard)
      */
-    public static List<String> getWaveDescription(Difficulty difficulty) {
-        List<String> descriptions = new ArrayList<>();
-
-        switch (difficulty) {
-            case EASY:
-                descriptions.add("§7Wave 1: §e10 Zombies");
-                descriptions.add("§7Wave 2: §e8 Skeletons");
-                descriptions.add("§7Wave 3: §e5 Zombies + 5 Skeletons");
-                break;
-            case MEDIUM:
-                descriptions.add("§7Wave 1: §e15 Zombies + 5 Spiders");
-                descriptions.add("§7Wave 2: §e10 Skeletons + 3 Creepers");
-                descriptions.add("§7Wave 3: §eMixed (15 Mobs)");
-                break;
-            case HARD:
-                descriptions.add("§7Wave 1: §e20 Zombies + 10 Spiders");
-                descriptions.add("§7Wave 2: §e15 Skeletons + 5 Creepers + 3 Witches");
-                descriptions.add("§7Wave 3: §eMixed + Endermen (30 Mobs)");
-                break;
-            case EXTREME:
-                descriptions.add("§7Wave 1: §e30 Zombies + 15 Spiders + 5 Witches");
-                descriptions.add("§7Wave 2: §e20 Skeletons + 10 Creepers + 5 Endermen + Ravager");
-                descriptions.add("§7Wave 3: §c§lWITHER §7+ 30 Support-Mobs");
-                break;
-            case CUSTOM:
-                descriptions.add("§7Definiere deine eigenen Waves");
-                descriptions.add("§7mit Spawn Eggs im Inventar");
-                break;
-        }
-
-        return descriptions;
+    public static List<List<EntityType>> getPreset(Difficulty difficulty) {
+        return getPreset(difficulty, 3);
     }
 
-    // === PRESET-DEFINITIONEN ===
+    // ==================== EASY ====================
 
-    private static List<List<EntityType>> getEasyWaves() {
+    private static List<List<EntityType>> getEasyWaves(int count) {
         List<List<EntityType>> waves = new ArrayList<>();
 
-        // Wave 1: 10 Zombies
-        List<EntityType> wave1 = new ArrayList<>();
-        for (int i = 0; i < 10; i++) {
-            wave1.add(EntityType.ZOMBIE);
+        if (count == 1) {
+            // 1 Wave: Leicht gemischt
+            waves.add(createWave(
+                    10, EntityType.ZOMBIE,
+                    5, EntityType.SKELETON
+            ));
+        } else if (count == 3) {
+            // 3 Waves: Klassisch
+            waves.add(createWave(10, EntityType.ZOMBIE));
+            waves.add(createWave(8, EntityType.SKELETON));
+            waves.add(createWave(
+                    5, EntityType.ZOMBIE,
+                    5, EntityType.SKELETON
+            ));
+        } else if (count == 5) {
+            // 5 Waves: Sanfte Steigerung
+            waves.add(createWave(8, EntityType.ZOMBIE));
+            waves.add(createWave(6, EntityType.SKELETON));
+            waves.add(createWave(10, EntityType.ZOMBIE));
+            waves.add(createWave(8, EntityType.SKELETON, 2, EntityType.SPIDER));
+            waves.add(createWave(
+                    7, EntityType.ZOMBIE,
+                    7, EntityType.SKELETON
+            ));
+        } else if (count == 10) {
+            // 10 Waves: Allmähliche Progression
+            waves.add(createWave(6, EntityType.ZOMBIE));
+            waves.add(createWave(5, EntityType.SKELETON));
+            waves.add(createWave(8, EntityType.ZOMBIE));
+            waves.add(createWave(6, EntityType.SKELETON));
+            waves.add(createWave(5, EntityType.ZOMBIE, 3, EntityType.SPIDER));
+            waves.add(createWave(10, EntityType.ZOMBIE));
+            waves.add(createWave(8, EntityType.SKELETON, 2, EntityType.CREEPER));
+            waves.add(createWave(6, EntityType.ZOMBIE, 6, EntityType.SKELETON));
+            waves.add(createWave(8, EntityType.SKELETON, 4, EntityType.SPIDER));
+            waves.add(createWave(
+                    10, EntityType.ZOMBIE,
+                    8, EntityType.SKELETON,
+                    3, EntityType.CREEPER
+            ));
+        } else if (count == 15) {
+            // 15 Waves: Lange aber machbar
+            for (int i = 0; i < 5; i++) {
+                waves.add(createWave(6 + i, EntityType.ZOMBIE));
+            }
+            for (int i = 0; i < 5; i++) {
+                waves.add(createWave(5 + i, EntityType.SKELETON, i, EntityType.SPIDER));
+            }
+            for (int i = 0; i < 5; i++) {
+                waves.add(createWave(
+                        5 + i, EntityType.ZOMBIE,
+                        5 + i, EntityType.SKELETON,
+                        i, EntityType.CREEPER
+                ));
+            }
         }
-        waves.add(wave1);
-
-        // Wave 2: 8 Skeletons
-        List<EntityType> wave2 = new ArrayList<>();
-        for (int i = 0; i < 8; i++) {
-            wave2.add(EntityType.SKELETON);
-        }
-        waves.add(wave2);
-
-        // Wave 3: 5 Zombies + 5 Skeletons
-        List<EntityType> wave3 = new ArrayList<>();
-        for (int i = 0; i < 5; i++) {
-            wave3.add(EntityType.ZOMBIE);
-            wave3.add(EntityType.SKELETON);
-        }
-        waves.add(wave3);
 
         return waves;
     }
 
-    private static List<List<EntityType>> getMediumWaves() {
+    // ==================== MEDIUM ====================
+
+    private static List<List<EntityType>> getMediumWaves(int count) {
         List<List<EntityType>> waves = new ArrayList<>();
 
-        // Wave 1: 15 Zombies + 5 Spiders
-        List<EntityType> wave1 = new ArrayList<>();
-        for (int i = 0; i < 15; i++) wave1.add(EntityType.ZOMBIE);
-        for (int i = 0; i < 5; i++) wave1.add(EntityType.SPIDER);
-        waves.add(wave1);
-
-        // Wave 2: 10 Skeletons + 3 Creepers
-        List<EntityType> wave2 = new ArrayList<>();
-        for (int i = 0; i < 10; i++) wave2.add(EntityType.SKELETON);
-        for (int i = 0; i < 3; i++) wave2.add(EntityType.CREEPER);
-        waves.add(wave2);
-
-        // Wave 3: Mixed
-        List<EntityType> wave3 = new ArrayList<>();
-        for (int i = 0; i < 5; i++) wave3.add(EntityType.ZOMBIE);
-        for (int i = 0; i < 5; i++) wave3.add(EntityType.SKELETON);
-        for (int i = 0; i < 3; i++) wave3.add(EntityType.SPIDER);
-        for (int i = 0; i < 2; i++) wave3.add(EntityType.CREEPER);
-        waves.add(wave3);
+        if (count == 1) {
+            waves.add(createWave(
+                    15, EntityType.ZOMBIE,
+                    10, EntityType.SKELETON,
+                    5, EntityType.SPIDER,
+                    2, EntityType.CREEPER
+            ));
+        } else if (count == 3) {
+            waves.add(createWave(15, EntityType.ZOMBIE, 5, EntityType.SPIDER));
+            waves.add(createWave(10, EntityType.SKELETON, 3, EntityType.CREEPER));
+            waves.add(createWave(
+                    8, EntityType.ZOMBIE,
+                    8, EntityType.SKELETON,
+                    3, EntityType.SPIDER,
+                    2, EntityType.CREEPER
+            ));
+        } else if (count == 5) {
+            waves.add(createWave(12, EntityType.ZOMBIE, 3, EntityType.SPIDER));
+            waves.add(createWave(10, EntityType.SKELETON));
+            waves.add(createWave(15, EntityType.ZOMBIE, 5, EntityType.SPIDER));
+            waves.add(createWave(12, EntityType.SKELETON, 4, EntityType.CREEPER));
+            waves.add(createWave(
+                    10, EntityType.ZOMBIE,
+                    10, EntityType.SKELETON,
+                    5, EntityType.SPIDER,
+                    3, EntityType.CREEPER
+            ));
+        } else if (count == 10) {
+            for (int i = 0; i < 10; i++) {
+                waves.add(createWave(
+                        10 + i, EntityType.ZOMBIE,
+                        8 + i, EntityType.SKELETON,
+                        3 + (i / 2), EntityType.SPIDER,
+                        i / 3, EntityType.CREEPER
+                ));
+            }
+        } else if (count == 15) {
+            for (int i = 0; i < 15; i++) {
+                waves.add(createWave(
+                        10 + i, EntityType.ZOMBIE,
+                        8 + (i / 2), EntityType.SKELETON,
+                        5 + (i / 3), EntityType.SPIDER,
+                        i / 2, EntityType.CREEPER,
+                        i / 5, EntityType.WITCH
+                ));
+            }
+        }
 
         return waves;
     }
 
-    private static List<List<EntityType>> getHardWaves() {
+    // ==================== HARD ====================
+
+    private static List<List<EntityType>> getHardWaves(int count) {
         List<List<EntityType>> waves = new ArrayList<>();
 
-        // Wave 1: 20 Zombies + 10 Spiders
-        List<EntityType> wave1 = new ArrayList<>();
-        for (int i = 0; i < 20; i++) wave1.add(EntityType.ZOMBIE);
-        for (int i = 0; i < 10; i++) wave1.add(EntityType.SPIDER);
-        waves.add(wave1);
-
-        // Wave 2: 15 Skeletons + 5 Creepers + 3 Witches
-        List<EntityType> wave2 = new ArrayList<>();
-        for (int i = 0; i < 15; i++) wave2.add(EntityType.SKELETON);
-        for (int i = 0; i < 5; i++) wave2.add(EntityType.CREEPER);
-        for (int i = 0; i < 3; i++) wave2.add(EntityType.WITCH);
-        waves.add(wave2);
-
-        // Wave 3: Heavy Mixed
-        List<EntityType> wave3 = new ArrayList<>();
-        for (int i = 0; i < 10; i++) wave3.add(EntityType.ZOMBIE);
-        for (int i = 0; i < 10; i++) wave3.add(EntityType.SKELETON);
-        for (int i = 0; i < 5; i++) wave3.add(EntityType.SPIDER);
-        for (int i = 0; i < 3; i++) wave3.add(EntityType.CREEPER);
-        for (int i = 0; i < 2; i++) wave3.add(EntityType.ENDERMAN);
-        waves.add(wave3);
+        if (count == 1) {
+            waves.add(createWave(
+                    25, EntityType.ZOMBIE,
+                    20, EntityType.SKELETON,
+                    10, EntityType.SPIDER,
+                    5, EntityType.CREEPER,
+                    3, EntityType.WITCH
+            ));
+        } else if (count == 3) {
+            waves.add(createWave(20, EntityType.ZOMBIE, 10, EntityType.SPIDER));
+            waves.add(createWave(15, EntityType.SKELETON, 5, EntityType.CREEPER, 3, EntityType.WITCH));
+            waves.add(createWave(
+                    15, EntityType.ZOMBIE,
+                    15, EntityType.SKELETON,
+                    8, EntityType.SPIDER,
+                    5, EntityType.CREEPER,
+                    2, EntityType.ENDERMAN
+            ));
+        } else if (count == 5) {
+            waves.add(createWave(18, EntityType.ZOMBIE, 7, EntityType.SPIDER));
+            waves.add(createWave(15, EntityType.SKELETON, 3, EntityType.CREEPER));
+            waves.add(createWave(20, EntityType.ZOMBIE, 10, EntityType.SPIDER, 2, EntityType.WITCH));
+            waves.add(createWave(18, EntityType.SKELETON, 8, EntityType.CREEPER, 3, EntityType.ENDERMAN));
+            waves.add(createWave(
+                    20, EntityType.ZOMBIE,
+                    18, EntityType.SKELETON,
+                    10, EntityType.SPIDER,
+                    5, EntityType.CREEPER,
+                    3, EntityType.WITCH,
+                    2, EntityType.ENDERMAN
+            ));
+        } else if (count == 10) {
+            for (int i = 0; i < 10; i++) {
+                waves.add(createWave(
+                        15 + (i * 2), EntityType.ZOMBIE,
+                        12 + (i * 2), EntityType.SKELETON,
+                        8 + i, EntityType.SPIDER,
+                        3 + (i / 2), EntityType.CREEPER,
+                        i / 2, EntityType.WITCH,
+                        i / 3, EntityType.ENDERMAN
+                ));
+            }
+        } else if (count == 15) {
+            for (int i = 0; i < 15; i++) {
+                waves.add(createWave(
+                        15 + (i * 2), EntityType.ZOMBIE,
+                        12 + (i * 2), EntityType.SKELETON,
+                        8 + i, EntityType.SPIDER,
+                        3 + i, EntityType.CREEPER,
+                        i / 2, EntityType.WITCH,
+                        i / 2, EntityType.ENDERMAN,
+                        i / 5, EntityType.BLAZE
+                ));
+            }
+        }
 
         return waves;
     }
 
-    private static List<List<EntityType>> getExtremeWaves() {
+    // ==================== EXTREME ====================
+
+    private static List<List<EntityType>> getExtremeWaves(int count) {
         List<List<EntityType>> waves = new ArrayList<>();
 
-        // Wave 1: 30 Zombies + 15 Spiders + 5 Witches
-        List<EntityType> wave1 = new ArrayList<>();
-        for (int i = 0; i < 30; i++) wave1.add(EntityType.ZOMBIE);
-        for (int i = 0; i < 15; i++) wave1.add(EntityType.SPIDER);
-        for (int i = 0; i < 5; i++) wave1.add(EntityType.WITCH);
-        waves.add(wave1);
-
-        // Wave 2: 20 Skeletons + 10 Creepers + 5 Endermen + 1 Ravager
-        List<EntityType> wave2 = new ArrayList<>();
-        for (int i = 0; i < 20; i++) wave2.add(EntityType.SKELETON);
-        for (int i = 0; i < 10; i++) wave2.add(EntityType.CREEPER);
-        for (int i = 0; i < 5; i++) wave2.add(EntityType.ENDERMAN);
-        wave2.add(EntityType.RAVAGER);
-        waves.add(wave2);
-
-        // Wave 3: Boss-Wave mit Wither
-        List<EntityType> wave3 = new ArrayList<>();
-        wave3.add(EntityType.WITHER);
-        for (int i = 0; i < 15; i++) wave3.add(EntityType.ZOMBIE);
-        for (int i = 0; i < 10; i++) wave3.add(EntityType.SKELETON);
-        for (int i = 0; i < 5; i++) wave3.add(EntityType.BLAZE);
-        waves.add(wave3);
+        if (count == 1) {
+            waves.add(createWave(
+                    40, EntityType.ZOMBIE,
+                    35, EntityType.SKELETON,
+                    20, EntityType.SPIDER,
+                    15, EntityType.CREEPER,
+                    10, EntityType.WITCH,
+                    5, EntityType.ENDERMAN,
+                    3, EntityType.BLAZE,
+                    1, EntityType.RAVAGER
+            ));
+        } else if (count == 3) {
+            waves.add(createWave(30, EntityType.ZOMBIE, 15, EntityType.SPIDER, 5, EntityType.WITCH));
+            waves.add(createWave(
+                    20, EntityType.SKELETON,
+                    10, EntityType.CREEPER,
+                    5, EntityType.ENDERMAN,
+                    1, EntityType.RAVAGER
+            ));
+            waves.add(createWave(
+                    25, EntityType.ZOMBIE,
+                    20, EntityType.SKELETON,
+                    10, EntityType.SPIDER,
+                    8, EntityType.CREEPER,
+                    5, EntityType.WITCH,
+                    3, EntityType.ENDERMAN,
+                    3, EntityType.BLAZE,
+                    1, EntityType.WITHER
+            ));
+        } else if (count == 5) {
+            waves.add(createWave(25, EntityType.ZOMBIE, 12, EntityType.SPIDER, 3, EntityType.WITCH));
+            waves.add(createWave(20, EntityType.SKELETON, 8, EntityType.CREEPER, 2, EntityType.ENDERMAN));
+            waves.add(createWave(30, EntityType.ZOMBIE, 15, EntityType.SPIDER, 5, EntityType.WITCH, 1, EntityType.RAVAGER));
+            waves.add(createWave(
+                    25, EntityType.SKELETON,
+                    15, EntityType.CREEPER,
+                    8, EntityType.ENDERMAN,
+                    5, EntityType.BLAZE
+            ));
+            waves.add(createWave(
+                    30, EntityType.ZOMBIE,
+                    25, EntityType.SKELETON,
+                    15, EntityType.SPIDER,
+                    10, EntityType.CREEPER,
+                    8, EntityType.WITCH,
+                    5, EntityType.ENDERMAN,
+                    3, EntityType.BLAZE,
+                    1, EntityType.WITHER
+            ));
+        } else if (count == 10) {
+            for (int i = 0; i < 9; i++) {
+                waves.add(createWave(
+                        20 + (i * 3), EntityType.ZOMBIE,
+                        18 + (i * 3), EntityType.SKELETON,
+                        12 + (i * 2), EntityType.SPIDER,
+                        8 + i, EntityType.CREEPER,
+                        5 + (i / 2), EntityType.WITCH,
+                        3 + (i / 2), EntityType.ENDERMAN,
+                        i / 2, EntityType.BLAZE,
+                        i / 4, EntityType.RAVAGER
+                ));
+            }
+            // Boss-Wave
+            waves.add(createWave(
+                    40, EntityType.ZOMBIE,
+                    35, EntityType.SKELETON,
+                    20, EntityType.SPIDER,
+                    15, EntityType.CREEPER,
+                    10, EntityType.WITCH,
+                    8, EntityType.ENDERMAN,
+                    5, EntityType.BLAZE,
+                    2, EntityType.RAVAGER,
+                    1, EntityType.WITHER
+            ));
+        } else if (count == 15) {
+            for (int i = 0; i < 14; i++) {
+                waves.add(createWave(
+                        20 + (i * 2), EntityType.ZOMBIE,
+                        18 + (i * 2), EntityType.SKELETON,
+                        12 + (i * 2), EntityType.SPIDER,
+                        8 + i, EntityType.CREEPER,
+                        5 + i, EntityType.WITCH,
+                        3 + (i / 2), EntityType.ENDERMAN,
+                        i / 2, EntityType.BLAZE,
+                        i / 3, EntityType.RAVAGER
+                ));
+            }
+            // Mega-Boss-Wave
+            waves.add(createWave(
+                    50, EntityType.ZOMBIE,
+                    45, EntityType.SKELETON,
+                    30, EntityType.SPIDER,
+                    20, EntityType.CREEPER,
+                    15, EntityType.WITCH,
+                    10, EntityType.ENDERMAN,
+                    8, EntityType.BLAZE,
+                    3, EntityType.RAVAGER,
+                    2, EntityType.WITHER
+            ));
+        }
 
         return waves;
+    }
+
+    // ==================== HELPER ====================
+
+    /**
+     * Hilfsmethode: Erstellt Wave mit Mob-Paaren (Anzahl, Type)
+     */
+    private static List<EntityType> createWave(Object... mobPairs) {
+        List<EntityType> wave = new ArrayList<>();
+
+        for (int i = 0; i < mobPairs.length; i += 2) {
+            int count = (Integer) mobPairs[i];
+            EntityType type = (EntityType) mobPairs[i + 1];
+
+            for (int j = 0; j < count; j++) {
+                wave.add(type);
+            }
+        }
+
+        return wave;
+    }
+
+    /**
+     * Gibt Beschreibung für Wave-Anzahl zurück
+     */
+    public static String getWaveCountDescription(int count) {
+        switch (count) {
+            case 1: return "§7Schnell & Intensiv";
+            case 3: return "§7Klassisch";
+            case 5: return "§7Ausgewogen";
+            case 10: return "§7Lange Session";
+            case 15: return "§7Marathon";
+            default: return "§7Custom";
+        }
     }
 }

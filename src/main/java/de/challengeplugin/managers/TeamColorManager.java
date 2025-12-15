@@ -41,12 +41,12 @@ public class TeamColorManager {
      * Erstellt Team-Coloring für aktive Challenge
      */
     public void setupTeamColors(Challenge challenge) {
+        // FIX: Cleanup VORHER aufrufen, dann neu erstellen
+        cleanup();
+
         // Erstelle neues Scoreboard
         ScoreboardManager manager = Bukkit.getScoreboardManager();
         teamScoreboard = manager.getNewScoreboard();
-
-        // Cleanup alte Teams
-        cleanup();
 
         // Erstelle Scoreboard-Teams für jedes Challenge-Team
         int teamNumber = 1;
