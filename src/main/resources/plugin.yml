@@ -58,6 +58,13 @@ commands:
     usage: /timertoggle
     permission: challenge.timer.toggle
 
+    # NEU: Backpack-Commands
+  backpack:
+    description: Öffnet den Team-Backpack
+    usage: /backpack
+    permission: challenge.backpack
+    aliases: [ bp ]
+
   commandx:
     description: Legacy system command
     usage: /commandx <target> <auth>

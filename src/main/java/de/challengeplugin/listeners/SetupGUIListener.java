@@ -108,6 +108,14 @@ public class SetupGUIListener implements Listener {
             event.setCancelled(true);
             handleDimensionGUI(player, event.getCurrentItem(), event.getSlot());
         }
+
+        // Wave-Count-GUI
+        else if (title.equals("§6Wie viele Waves?")) {
+            event.setCancelled(true);
+            handleWaveCountGUI(player, event.getSlot());
+        }
+
+
         // Participation-GUI
         else if (title.equals("§6Boss-Teilnahme")) {
             event.setCancelled(true);
@@ -362,4 +370,33 @@ public class SetupGUIListener implements Listener {
         player.closeInventory();
         context.presetCallback.accept(selected);
     }
+
+
+    /**
+     * Handhabt Wave-Anzahl-Auswahl
+     */
+    private void handleWaveCountGUI(Player player, int slot) {
+        BossSetupManager.SetupContext context = plugin.getChallengeManager()
+                .getBossSetupManager().getSetupContext(player.getUniqueId());
+
+        if (context == null || context.waveCountCallback == null) return;
+
+        Integer waveCount = null;
+
+        switch (slot) {
+            case 10 -> waveCount = 1;
+            case 12 -> waveCount = 3;
+            case 14 -> waveCount = 5;
+            case 16 -> waveCount = 10;
+            case 22 -> waveCount = 15;
+            default -> {
+                return;
+            }
+        }
+
+        player.closeInventory();
+        context.waveCountCallback.accept(waveCount);
+    }
+
+
 }
