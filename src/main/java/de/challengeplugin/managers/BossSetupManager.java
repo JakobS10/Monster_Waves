@@ -351,6 +351,7 @@ public class BossSetupManager {
             activeSetups.put(boss.getUniqueId(), context);
         }
 
+        // FIX: Setze Stage auch hier auf WAVE_SETUP als Fallback
         context.stage = SetupStage.WAVE_SETUP;
         context.teamsToSetup = new ArrayList<>(challenge.getTeams().keySet());
         context.currentTeamIndex = 0;
@@ -362,6 +363,9 @@ public class BossSetupManager {
         boss.getInventory().clear();
 
         setupNextTeam(boss);
+
+        // DEBUG
+        plugin.getLogger().info("[BossSetup] startWaveSetup - Context stage: " + context.stage);
     }
 
     private void openTeamAssignmentModeGUI(Player boss, Consumer<Boolean> callback) {
@@ -462,9 +466,14 @@ public class BossSetupManager {
 
     /**
      * Startet Custom-Wave-Setup mit gewählter Wave-Anzahl
+     * FIX: Stage wird jetzt korrekt auf WAVE_SETUP gesetzt!
      */
     private void startCustomWaveSetup(Player boss, UUID teamId, List<String> memberNames, int waveCount) {
         SetupContext context = activeSetups.get(boss.getUniqueId());
+
+        // FIX: Setze Stage EXPLIZIT auf WAVE_SETUP!
+        context.stage = SetupStage.WAVE_SETUP;
+
         context.currentWave = 0;
         context.currentTeamWaves = new ArrayList<>();
         context.selectedWaveCount = waveCount;
@@ -480,17 +489,38 @@ public class BossSetupManager {
         confirm.setItemMeta(meta);
 
         boss.getInventory().setItem(8, confirm);
+
+        // DEBUG
+        plugin.getLogger().info("[BossSetup] startCustomWaveSetup - Stage gesetzt auf: " + context.stage);
     }
 
     /**
      * Bestätigt aktuelle Wave
+     * FIX: Besseres Error-Handling und Debugging
      */
     public void confirmCurrentWave(Player boss) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
         SetupContext context = activeSetups.get(boss.getUniqueId());
 
-        if (context == null || context.stage != SetupStage.WAVE_SETUP) {
-            boss.sendMessage("§cSetup-Context-Fehler!");
+        // DEBUG: Log Context-Status
+        plugin.getLogger().info("[BossSetup] confirmCurrentWave aufgerufen für " + boss.getName());
+        plugin.getLogger().info("[BossSetup] Context vorhanden: " + (context != null));
+        if (context != null) {
+            plugin.getLogger().info("[BossSetup] Context.stage: " + context.stage);
+        }
+
+        if (context == null) {
+            boss.sendMessage("§c[Setup-Fehler] Context nicht gefunden!");
+            boss.sendMessage("§7Bitte starte das Setup neu mit /challenge cancel");
+            plugin.getLogger().warning("[BossSetup] Context ist NULL für " + boss.getName());
+            return;
+        }
+
+        if (context.stage != SetupStage.WAVE_SETUP) {
+            boss.sendMessage("§c[Setup-Fehler] Falsches Setup-Stage!");
+            boss.sendMessage("§7Aktuelles Stage: " + context.stage);
+            boss.sendMessage("§7Erwartet: WAVE_SETUP");
+            plugin.getLogger().warning("[BossSetup] Falsches Stage für " + boss.getName() + ": " + context.stage);
             return;
         }
 

@@ -4,16 +4,17 @@ import de.challengeplugin.ChallengePlugin;
 import de.challengeplugin.models.Challenge;
 import de.challengeplugin.models.PlayerChallengeData;
 import de.challengeplugin.models.ArenaInstance;
+import org.bukkit.Material;
 import org.bukkit.entity.*;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.*;
 import org.bukkit.event.player.*;
+import org.bukkit.inventory.ItemStack;
 import java.util.UUID;
 
 /**
- * Listener für Challenge-Events
- * FIX: Disconnect während Combat triggert jetzt korrekt Forfeit
+ * ERWEITERT: Gibt Backpack-Item bei Respawn zurück
  */
 public class ChallengeListener implements Listener {
 
@@ -37,10 +38,8 @@ public class ChallengeListener implements Listener {
         PlayerChallengeData data = challenge.getPlayerData().get(player.getUniqueId());
         if (data == null) return;
 
-        // Zähle Tod
         data.setTotalDeaths(data.getTotalDeaths() + 1);
 
-        // Wave-Stat aktualisieren
         int currentWave = data.getCurrentWaveIndex();
         if (data.getWaveStats().containsKey(currentWave)) {
             data.getWaveStats().get(currentWave).deaths++;
@@ -52,6 +51,7 @@ public class ChallengeListener implements Listener {
 
     /**
      * Spieler-Respawn während Challenge
+     * NEU: Gibt Backpack-Item zurück!
      */
     @EventHandler
     public void onPlayerRespawn(PlayerRespawnEvent event) {
@@ -68,6 +68,14 @@ public class ChallengeListener implements Listener {
         if (arena != null) {
             event.setRespawnLocation(arena.getSpawnPoint());
         }
+
+        // NEU: Gib Backpack-Item zurück (Slot 8)
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            ItemStack backpackItem = plugin.getChallengeManager()
+                    .getBackpackManager().getBackpackItem();
+            player.getInventory().setItem(8, backpackItem);
+            player.sendMessage("§aDein Backpack-Item wurde wiederhergestellt!");
+        }, 1L);
     }
 
     /**
@@ -86,11 +94,9 @@ public class ChallengeListener implements Listener {
         PlayerChallengeData data = challenge.getPlayerData().get(player.getUniqueId());
         if (data == null) return;
 
-        // Zähle Damage
         double damage = event.getFinalDamage();
         data.setTotalDamageTaken(data.getTotalDamageTaken() + damage);
 
-        // Wave-Stat aktualisieren
         int currentWave = data.getCurrentWaveIndex();
         if (data.getWaveStats().containsKey(currentWave)) {
             data.getWaveStats().get(currentWave).damageTaken += damage;
@@ -104,24 +110,21 @@ public class ChallengeListener implements Listener {
     public void onEntityDeath(EntityDeathEvent event) {
         LivingEntity entity = event.getEntity();
 
-        // Nur Mobs, keine Spieler
         if (entity instanceof Player) return;
 
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
         if (challenge == null) return;
         if (challenge.getCurrentPhase() != Challenge.ChallengePhase.COMBAT) return;
 
-        // FIX: Auch ohne Killer muss der Mob gezählt werden!
         Player killer = entity.getKiller();
         UUID killerId = killer != null ? killer.getUniqueId() : null;
 
-        // Informiere WaveManager (der findet das Team über Mob-Mapping)
         plugin.getChallengeManager().getWaveManager()
                 .onMobDeath(killerId, entity.getUniqueId());
     }
 
     /**
-     * FIX: Spieler disconnected während Combat
+     * Spieler disconnected während Combat
      */
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
@@ -133,9 +136,7 @@ public class ChallengeListener implements Listener {
         PlayerChallengeData data = challenge.getPlayerData().get(player.getUniqueId());
         if (data == null) return;
 
-        // Nur während Combat-Phase als Aufgeben werten
         if (challenge.getCurrentPhase() == Challenge.ChallengePhase.COMBAT) {
-            // Disconnect = Aufgeben (nur wenn noch aktiv)
             if (!data.isHasCompleted() && !data.isHasForfeited()) {
                 plugin.getLogger().info("[ChallengeListener] Spieler " + player.getName() + " hat während Combat disconnected -> Forfeit");
                 plugin.getChallengeManager().onPlayerForfeited(player.getUniqueId());
