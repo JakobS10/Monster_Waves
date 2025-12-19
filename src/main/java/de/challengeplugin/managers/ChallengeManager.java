@@ -96,11 +96,15 @@ public class ChallengeManager {
                 player.sendMessage("§a§l=== CHALLENGE GESTARTET ===");
                 player.sendMessage("§7Farmzeit: §e" + (activeChallenge.getFarmDurationTicks() / 20) + " Sekunden");
                 player.sendMessage("§7Sammle Ressourcen für den Kampf!");
+                player.sendMessage("");
+                player.sendMessage("§6Nutze §e/backpack §6oder §e/bp §6um deinen Team-Backpack zu öffnen!");
+                player.sendMessage("§6Ach ja!");
+                player.sendMessage("§6Eins noch:");
+                player.sendMessage("");
+                player.sendMessage("§4§l67");
+                player.sendMessage("");
             }
         }
-
-        // NEU: Gib Backpack-Items an alle Spieler
-        backpackManager.giveBackpackItemsToTeam(activeChallenge);
 
         startFarmingTimer();
     }

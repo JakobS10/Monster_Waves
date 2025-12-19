@@ -40,7 +40,7 @@ public class ArenaInstance {
         this.sizeY = sizeY;
 
         // Spawn-Point ist Zentrum + 1 Block hoch
-        this.spawnPoint = centerLocation.clone().add(5, -2, 5);
+        this.spawnPoint = centerLocation.clone().add(5, -8, 5);
     }
 
     // === GETTER UND SETTER ===

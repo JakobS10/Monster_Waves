@@ -69,12 +69,9 @@ public class ChallengeListener implements Listener {
             event.setRespawnLocation(arena.getSpawnPoint());
         }
 
-        // NEU: Gib Backpack-Item zurück (Slot 8)
+
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            ItemStack backpackItem = plugin.getChallengeManager()
-                    .getBackpackManager().getBackpackItem();
-            player.getInventory().setItem(8, backpackItem);
-            player.sendMessage("§aDein Backpack-Item wurde wiederhergestellt!");
+            player.sendMessage("§aDas würde mir so massiv stinken! Ganz viele liebe Grüße vom völlig unterbezahten Plugin-Ersteller!");
         }, 1L);
     }
 

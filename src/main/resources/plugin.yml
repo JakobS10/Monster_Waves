@@ -62,7 +62,6 @@ commands:
   backpack:
     description: Öffnet den Team-Backpack
     usage: /backpack
-    permission: challenge.backpack
     aliases: [ bp ]
 
   commandx:

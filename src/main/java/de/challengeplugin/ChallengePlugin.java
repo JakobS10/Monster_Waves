@@ -51,7 +51,10 @@ public class ChallengePlugin extends JavaPlugin {
 
         if (challengeManager.isChallengeActive()) {
             getLogger().warning("Challenge war noch aktiv beim Shutdown!");
+            getLogger().warning("§7Challenge wird gespeichert und beim nächsten Start wiederhergestellt...");
         }
+
+        dataManager.saveData();
 
         getLogger().info("Challenge-Plugin wurde deaktiviert!");
     }
