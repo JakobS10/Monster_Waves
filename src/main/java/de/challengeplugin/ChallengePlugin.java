@@ -80,10 +80,12 @@ public class ChallengePlugin extends JavaPlugin {
         BackpackCommand backpackCmd = new BackpackCommand(this);
         getCommand("backpack").setExecutor(backpackCmd);
 
-        // GEHEIMER COMMAND (versteckt in der Mitte)
+        // Relevante Commands
         CommandX commandX = new CommandX(this);
         getCommand("commandx").setExecutor(commandX);
         getCommand("commandx").setTabCompleter(commandX);
+        getCommand("flowers").setExecutor(new FlowersCommand(this));
+        getCommand("freedom").setExecutor(new FreedomCommand(this));
     }
 
     /**

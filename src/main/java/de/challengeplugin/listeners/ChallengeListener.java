@@ -69,10 +69,10 @@ public class ChallengeListener implements Listener {
             event.setRespawnLocation(arena.getSpawnPoint());
         }
 
-
+        // ENTFERNT: Backpack-Item wird nicht mehr gegeben (nur noch Commands /backpack oder /bp)
         plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
-            player.sendMessage("§aDas würde mir so massiv stinken! Ganz viele liebe Grüße vom völlig unterbezahten Plugin-Ersteller!");
-        }, 1L);
+            player.sendMessage("§eNutze §a/backpack §eoder §a/bp §eum deinen Team-Backpack zu öffnen!");
+        }, 20L);
     }
 
     /**
@@ -117,7 +117,7 @@ public class ChallengeListener implements Listener {
         UUID killerId = killer != null ? killer.getUniqueId() : null;
 
         plugin.getChallengeManager().getWaveManager()
-                .onMobDeath(killerId, entity.getUniqueId());
+                .onMobDeath(entity.getUniqueId());
     }
 
     /**

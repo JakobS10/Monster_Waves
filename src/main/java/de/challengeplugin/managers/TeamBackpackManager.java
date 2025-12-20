@@ -96,41 +96,6 @@ public class TeamBackpackManager {
     }
 
     /**
-     * Gibt Backpack-Öffner-Item
-     */
-    public ItemStack getBackpackItem() {
-        ItemStack item = new ItemStack(Material.CHEST);
-        ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName("§6§lTeam-Backpack");
-        meta.setLore(Arrays.asList(
-                "§7Rechtsklick zum Öffnen",
-                "",
-                "§7Geteiltes Inventar für",
-                "§7alle Team-Mitglieder"
-        ));
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    /**
-     * Gibt Backpack-Item allen Team-Mitgliedern
-     */
-    public void giveBackpackItemsToTeam(Challenge challenge) {
-        ItemStack backpackItem = getBackpackItem();
-
-        for (UUID playerId : challenge.getParticipants()) {
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null) {
-                // Gib Item in Slot 8 (letzter Hotbar-Slot)
-                player.getInventory().setItem(8, backpackItem);
-            }
-        }
-
-        plugin.getLogger().info("[TeamBackpackManager] Backpack-Items an alle Spieler gegeben");
-        plugin.getLogger().info("[TeamBackpackManager] HINWEIS: Jedes Team hat seinen EIGENEN Backpack!");
-    }
-
-    /**
      * Entfernt alle Backpacks
      */
     public void cleanup() {
@@ -177,5 +142,40 @@ public class TeamBackpackManager {
      */
     public UUID getOpenBackpackTeam(Player player) {
         return openBackpacks.get(player.getUniqueId());
+    }
+
+    /**
+     * NEU: Gibt Map aller Backpacks zurück (für Speicherung)
+     */
+    public Map<UUID, Inventory> getTeamBackpacks() {
+        return teamBackpacks;
+    }
+
+    /**
+     * NEU: Stellt Backpack-Items nach Server-Neustart wieder her
+     */
+    public void restoreBackpackItems(Map<UUID, List<ItemStack>> backpackItems) {
+        for (Map.Entry<UUID, List<ItemStack>> entry : backpackItems.entrySet()) {
+            UUID teamId = entry.getKey();
+            List<ItemStack> items = entry.getValue();
+
+            // Hole Backpack für Team
+            Inventory backpack = teamBackpacks.get(teamId);
+            if (backpack == null) {
+                plugin.getLogger().warning("[TeamBackpackManager] Kein Backpack für Team gefunden: " + teamId);
+                continue;
+            }
+
+            // Fülle Items ein
+            int slot = 0;
+            for (ItemStack item : items) {
+                if (item != null && slot < backpack.getSize()) {
+                    backpack.setItem(slot, item);
+                    slot++;
+                }
+            }
+
+            plugin.getLogger().info("[TeamBackpackManager] " + items.size() + " Items wiederhergestellt für Team");
+        }
     }
 }

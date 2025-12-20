@@ -9,6 +9,7 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.EntityType;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
 import java.io.File;
@@ -222,6 +223,27 @@ public class DataManager {
                 waveIndex++;
             }
         }
+
+        // NEU: Backpack-Items speichern!
+        ConfigurationSection backpacksSection = sec.createSection("teamBackpacks");
+        for (Map.Entry<UUID, Inventory> entry : plugin.getChallengeManager()
+                .getBackpackManager().getTeamBackpacks().entrySet()) {
+            UUID teamId = entry.getKey();
+            Inventory backpack = entry.getValue();
+
+            // Speichere alle Items aus dem Backpack
+            List<ItemStack> items = new ArrayList<>();
+            for (ItemStack item : backpack.getContents()) {
+                if (item != null) {
+                    items.add(item);
+                }
+            }
+
+            if (!items.isEmpty()) {
+                backpacksSection.set(teamId.toString(), items);
+                plugin.getLogger().info("[DataManager] Backpack für Team gespeichert: " + items.size() + " Items");
+            }
+        }
     }
 
     /**
@@ -370,6 +392,39 @@ public class DataManager {
             e.printStackTrace();
             return null;
         }
+    }
+
+    /**
+     * NEU: Lädt Backpack-Items und gibt sie zurück
+     * Wird von ChallengeManager beim Restore aufgerufen
+     */
+    public Map<UUID, List<ItemStack>> loadBackpackItems() {
+        Map<UUID, List<ItemStack>> backpackItems = new HashMap<>();
+
+        if (!config.contains("challenge.teamBackpacks")) {
+            return backpackItems;
+        }
+
+        ConfigurationSection backpacksSection = config.getConfigurationSection("challenge.teamBackpacks");
+        if (backpacksSection == null) return backpackItems;
+
+        for (String teamIdStr : backpacksSection.getKeys(false)) {
+            try {
+                UUID teamId = UUID.fromString(teamIdStr);
+
+                @SuppressWarnings("unchecked")
+                List<ItemStack> items = (List<ItemStack>) backpacksSection.getList(teamIdStr);
+
+                if (items != null && !items.isEmpty()) {
+                    backpackItems.put(teamId, items);
+                    plugin.getLogger().info("[DataManager] Backpack-Items geladen für Team: " + items.size() + " Items");
+                }
+            } catch (Exception e) {
+                plugin.getLogger().warning("Fehler beim Laden von Backpack-Items: " + e.getMessage());
+            }
+        }
+
+        return backpackItems;
     }
 
     // === TIMER-METHODEN ===
