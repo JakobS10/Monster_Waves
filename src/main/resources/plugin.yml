@@ -75,10 +75,11 @@ commands:
     description: Gibt allen Spielern Blumen und rosa Rüstung
     usage: /flowers
 
-    freedom:
-      description: Gibt allen Spielern 5 Sekunden No-Clip
-      usage: /freedom
-      # Funktioniert nur wenn keine Challenge läuft!
+  freedom:
+    description: Gibt allen Spielern 5 Sekunden No-Clip
+    usage: /freedom
+    # Funktioniert nur wenn keine Challenge läuft!
+
 permissions:
   challenge.*:
     description: Alle Challenge-Permissions
