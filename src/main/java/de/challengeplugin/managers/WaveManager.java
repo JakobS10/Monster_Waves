@@ -212,7 +212,7 @@ public class WaveManager {
         double offsetX = (random.nextDouble() - 0.5) * 20; // -10 bis +10
         double offsetZ = (random.nextDouble() - 0.5) * 20;
 
-        return center.clone().add(offsetX, 2, offsetZ);
+        return center.clone().add(offsetX, -8, offsetZ);
     }
 
     /**

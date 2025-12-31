@@ -8,14 +8,16 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
 
 /**
- * NEU: Listener für Spectator-System
+ * Listener für Spectator-System
  * - Compass-Klicks
  * - Spectator-GUI-Klicks
- * - Verhindert Schaden an Spectators (Backup-Sicherheit)
+ * - Verhindert Schaden an Spectators
+ * - Verhindert Item-Drops von Spectators (NEU!)
  */
 public class SpectatorListener implements Listener {
 
@@ -88,6 +90,20 @@ public class SpectatorListener implements Listener {
 
         if (plugin.getChallengeManager().getSpectatorManager().isSpectator(player.getUniqueId())) {
             event.setCancelled(true);
+        }
+    }
+
+    /**
+     * NEU: Verhindert Item-Drops von Spectators
+     */
+    @EventHandler
+    public void onSpectatorDropItem(PlayerDropItemEvent event) {
+        Player player = event.getPlayer();
+
+        // Prüfe ob Spieler im Spectator-Modus ist
+        if (plugin.getChallengeManager().getSpectatorManager().isSpectator(player.getUniqueId())) {
+            event.setCancelled(true);
+            player.sendMessage("§cDu kannst als Spectator keine Items droppen!");
         }
     }
 }
