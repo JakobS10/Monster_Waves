@@ -4,20 +4,17 @@ import de.challengeplugin.ChallengePlugin;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
-import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.*;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.*;
 import org.bukkit.inventory.ItemStack;
 
 /**
  * Listener für Spectator-System
- * - Compass-Klicks
- * - Spectator-GUI-Klicks
- * - Verhindert Schaden an Spectators
- * - Verhindert Item-Drops von Spectators (NEU!)
+ * ERWEITERT: Blockt ALLE Interaktionen mit der Welt!
  */
 public class SpectatorListener implements Listener {
 
@@ -40,7 +37,6 @@ public class SpectatorListener implements Listener {
         if (!item.hasItemMeta()) return;
         if (!item.getItemMeta().getDisplayName().equals("§b§lSpectator-Navigator")) return;
 
-        // Nur Rechtsklick
         if (event.getAction() == Action.RIGHT_CLICK_AIR ||
                 event.getAction() == Action.RIGHT_CLICK_BLOCK) {
 
@@ -65,7 +61,6 @@ public class SpectatorListener implements Listener {
         ItemStack item = event.getCurrentItem();
         if (item == null || item.getType() != Material.PLAYER_HEAD) return;
 
-        // Extrahiere Spielernamen aus Display-Name
         String displayName = item.getItemMeta().getDisplayName();
         String targetName = org.bukkit.ChatColor.stripColor(displayName);
 
@@ -80,8 +75,7 @@ public class SpectatorListener implements Listener {
     }
 
     /**
-     * Backup: Verhindert Schaden an Spectators
-     * (sollte durch Invincible bereits abgedeckt sein)
+     * Verhindert Schaden an Spectators
      */
     @EventHandler
     public void onSpectatorDamage(EntityDamageEvent event) {
@@ -94,16 +88,109 @@ public class SpectatorListener implements Listener {
     }
 
     /**
-     * NEU: Verhindert Item-Drops von Spectators
+     * Verhindert Item-Drops von Spectators (HIGHEST Priority!)
      */
-    @EventHandler
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onSpectatorDropItem(PlayerDropItemEvent event) {
         Player player = event.getPlayer();
 
-        // Prüfe ob Spieler im Spectator-Modus ist
         if (plugin.getChallengeManager().getSpectatorManager().isSpectator(player.getUniqueId())) {
             event.setCancelled(true);
             player.sendMessage("§cDu kannst als Spectator keine Items droppen!");
+        }
+    }
+
+    /**
+     * NEU: Verhindert Item-Pickup von Spectators
+     */
+    @EventHandler
+    public void onSpectatorPickupItem(EntityPickupItemEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+
+        if (plugin.getChallengeManager().getSpectatorManager().isSpectator(player.getUniqueId())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * NEU: Verhindert dass Spectators Entities schlagen
+     */
+    @EventHandler
+    public void onSpectatorDamageEntity(EntityDamageByEntityEvent event) {
+        if (!(event.getDamager() instanceof Player)) return;
+        Player player = (Player) event.getDamager();
+
+        if (plugin.getChallengeManager().getSpectatorManager().isSpectator(player.getUniqueId())) {
+            event.setCancelled(true);
+            player.sendMessage("§cDu kannst als Spectator keine Entities angreifen!");
+        }
+    }
+
+    /**
+     * NEU: Verhindert Block-Interaktionen (Türen, Knöpfe, Hebel, etc.)
+     */
+    @EventHandler
+    public void onSpectatorInteract(PlayerInteractEvent event) {
+        Player player = event.getPlayer();
+
+        if (!plugin.getChallengeManager().getSpectatorManager().isSpectator(player.getUniqueId())) {
+            return;
+        }
+
+        // Erlaube nur Compass-Klicks (bereits oben behandelt)
+        ItemStack item = event.getItem();
+        if (item != null && item.getType() == Material.COMPASS) {
+            if (item.hasItemMeta() && item.getItemMeta().getDisplayName().equals("§b§lSpectator-Navigator")) {
+                return; // Erlauben
+            }
+        }
+
+        // Blockiere alle anderen Interaktionen
+        if (event.getAction() == Action.RIGHT_CLICK_BLOCK ||
+                event.getAction() == Action.LEFT_CLICK_BLOCK ||
+                event.getAction() == Action.PHYSICAL) {
+
+            event.setCancelled(true);
+        }
+    }
+
+    /**
+     * NEU: Verhindert dass Spectators mit Entities interagieren (rechtsklick auf Villager, etc.)
+     */
+    @EventHandler
+    public void onSpectatorInteractEntity(PlayerInteractEntityEvent event) {
+        Player player = event.getPlayer();
+
+        if (plugin.getChallengeManager().getSpectatorManager().isSpectator(player.getUniqueId())) {
+            event.setCancelled(true);
+            player.sendMessage("§cDu kannst als Spectator nicht mit Entities interagieren!");
+        }
+    }
+
+    /**
+     * NEU: Verhindert Block-Break
+     */
+    @EventHandler
+    public void onSpectatorBlockBreak(org.bukkit.event.block.BlockBreakEvent event) {
+        Player player = event.getPlayer();
+
+        if (plugin.getChallengeManager().getSpectatorManager().isSpectator(player.getUniqueId())) {
+            event.setCancelled(true);
+            player.sendMessage("§cDu kannst als Spectator keine Blöcke abbauen!");
+        }
+    }
+
+    /**
+     * NEU: Verhindert Block-Place
+     */
+    @EventHandler
+    public void onSpectatorBlockPlace(org.bukkit.event.block.BlockPlaceEvent event) {
+        Player player = event.getPlayer();
+
+        if (plugin.getChallengeManager().getSpectatorManager().isSpectator(player.getUniqueId())) {
+            event.setCancelled(true);
+            player.sendMessage("§cDu kannst als Spectator keine Blöcke platzieren!");
         }
     }
 }

@@ -50,6 +50,13 @@ public class FlowersCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        // Prüfe ob Challenge läuft
+        if (plugin.getChallengeManager().isChallengeActive()) {
+            sender.sendMessage("§c§lFlowers ist während einer Challenge deaktiviert!");
+            sender.sendMessage("§7Warte bis die Challenge vorbei ist.");
+            return true;
+        }
+
         // Jeder kann diesen Command nutzen!
 
         int flowerCount = 0;
@@ -69,7 +76,7 @@ public class FlowersCommand implements CommandExecutor {
         }
 
         // Broadcast
-        Bukkit.broadcastMessage("§d§l BLUMEN-REGEN!");
+        Bukkit.broadcastMessage("§d§lBLUMEN-REGEN!");
         Bukkit.broadcastMessage("§7" + flowerCount + " Blumen und " + armorCount + " rosa Rüstungssets wurden verteilt!");
         Bukkit.broadcastMessage("§7Die Rüstung verschwindet in 1 Minute!");
 
@@ -162,7 +169,7 @@ public class FlowersCommand implements CommandExecutor {
                 .filter(itemEntity -> isPinkLeatherArmor(itemEntity.getItemStack(), pink))
                 .forEach(org.bukkit.entity.Entity::remove);
 
-        player.sendMessage("§dDeine rosa Rüstung ist verschwunden!<");
+        player.sendMessage("§dDeine rosa Rüstung ist verschwunden!");
         player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.5f, 1.5f);
     }
 

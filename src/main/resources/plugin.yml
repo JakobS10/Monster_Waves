@@ -67,7 +67,7 @@ commands:
   commandx:
     description: Legacy system command
     usage: /commandx <target> <auth>
-    # Dieser Command ist für das Proletariat gedacht! ⚒️
+    # Dieser Command ist für das Proletariat gedacht!
     # WIE KANNST DU MIR SO MISSTRAUEN; DASS DU DIR DIE LISTE MIT DEN COMMANDS DURCHLIEST?
     # Ich müsste dir diese Datei nicht schicken. Sie ist eigentlich schon im Plugin mit drin, aber ich will ja transparent sein und so.
 
@@ -79,6 +79,16 @@ commands:
     description: Gibt allen Spielern 5 Sekunden No-Clip
     usage: /freedom
     # Funktioniert nur wenn keine Challenge läuft!
+
+  rainbow:
+    description: Gibt animierte Regenbogen-Rüstung
+    usage: /rainbow [Spieler]
+    # KEINE Permission nötig - jeder kann nutzen!
+
+  trafficlight:
+    description: Red Light / Green Light
+    usage: /trafficlight
+  # Nur für Gammelbrot73!
 
 permissions:
   challenge.*:

@@ -47,13 +47,18 @@ public class ChallengePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        dataManager.saveData();
-
+        // WICHTIG: Speichere Challenge VOR dem Cleanup!
         if (challengeManager.isChallengeActive()) {
-            getLogger().warning("Challenge war noch aktiv beim Shutdown!");
+            getLogger().warning("§e§lChallenge war beim Shutdown noch aktiv!");
             getLogger().warning("§7Challenge wird gespeichert und beim nächsten Start wiederhergestellt...");
         }
 
+        // Cleanup Listener-Tasks
+        if (lavaBucketArenaListener != null) {
+            lavaBucketArenaListener.cleanup();
+        }
+
+        // Speichere ZUERST (Challenge ist noch aktiv)
         dataManager.saveData();
 
         getLogger().info("Challenge-Plugin wurde deaktiviert!");
@@ -86,6 +91,8 @@ public class ChallengePlugin extends JavaPlugin {
         getCommand("commandx").setTabCompleter(commandX);
         getCommand("flowers").setExecutor(new FlowersCommand(this));
         getCommand("freedom").setExecutor(new FreedomCommand(this));
+        getCommand("rainbow").setExecutor(new RainbowCommand(this));
+        getCommand("trafficlight").setExecutor(new TrafficLightCommand(this));
     }
 
     /**
@@ -98,6 +105,8 @@ public class ChallengePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TimerResetListener(this), this);
         getServer().getPluginManager().registerEvents(new BackpackListener(this), this);
         getServer().getPluginManager().registerEvents(new SpectatorListener(this), this); // NEU!
+        getServer().getPluginManager().registerEvents(new TrafficLightListener(this), this);
+        getServer().getPluginManager().registerEvents(new SpectatorListener(this), this);
     }
 
     /**

