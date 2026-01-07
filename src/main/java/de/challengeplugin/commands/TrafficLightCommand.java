@@ -65,6 +65,7 @@ public class TrafficLightCommand implements CommandExecutor {
         playerStartPositions.clear();
 
         // === PHASE 1: RED LIGHT (3 Sekunden) ===
+
         for (Player player : Bukkit.getOnlinePlayers()) {
             // Speichere Start-Position
             playerStartPositions.put(player.getUniqueId(), player.getLocation().clone());
@@ -72,8 +73,10 @@ public class TrafficLightCommand implements CommandExecutor {
             // Gib Schutz-Effekte
             player.addPotionEffect(new PotionEffect(
                     PotionEffectType.RESISTANCE, 200, 255, false, false, false));
-            player.addPotionEffect(new PotionEffect(
-                    PotionEffectType.KNOCKBACK_RESISTANCE, 200, 255, false, false, false));
+
+            // NEU: Mache Spieler unverwundbar statt Knockback Resistance
+            // So können sie sich bewegen, aber werden nicht von Mobs geschubst
+            player.setInvulnerable(true);
 
             // Riesige ActionBar-Warnung
             player.sendActionBar(Component.text("⚠ RED LIGHT - NICHT BEWEGEN! ⚠")
