@@ -10,8 +10,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitRunnable;
 
 /**
- * Verwandelt Lavaeimer in Arenen automatisch zu normalen Eimern
- * Läuft nur während Combat-Phase!
+ * Verwandelt Lavaeimer während Combat-Phase automatisch zu normalen Eimern
+ * FIX: Läuft für ALLE Spieler, nicht nur in Arena (war das Problem!)
  */
 public class LavaBucketArenaListener implements Listener {
 
@@ -25,7 +25,7 @@ public class LavaBucketArenaListener implements Listener {
 
     /**
      * Startet den Lava-Check Task
-     * Prüft jedes Tick alle Spieler in Arenen
+     * FIX: Prüft ALLE Spieler, nicht nur die in Arenen!
      */
     private void startLavaCheck() {
         BukkitRunnable task = new BukkitRunnable() {
@@ -38,16 +38,13 @@ public class LavaBucketArenaListener implements Listener {
                     return;
                 }
 
-                // Prüfe alle Teilnehmer
+                // FIX: Prüfe ALLE Teilnehmer (nicht nur in Arena!)
                 for (java.util.UUID playerId : challenge.getParticipants()) {
                     Player player = org.bukkit.Bukkit.getPlayer(playerId);
                     if (player == null || !player.isOnline()) continue;
 
-                    // Prüfe ob Spieler in Arena ist
-                    if (plugin.getChallengeManager().getArenaManager().isInArena(player.getLocation())) {
-                        // Konvertiere alle Lavaeimer im Inventar
-                        convertLavaBuckets(player);
-                    }
+                    // Konvertiere alle Lavaeimer im Inventar
+                    convertLavaBuckets(player);
                 }
             }
         };
@@ -82,7 +79,7 @@ public class LavaBucketArenaListener implements Listener {
 
         // Feedback (nur einmal pro Konvertierung)
         if (converted) {
-            player.sendMessage("§c⚠ Lavaeimer sind in der Arena nicht erlaubt!");
+            player.sendMessage("§cLavaeimer sind während der Kampfphase nicht erlaubt!");
             player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_FIRE_EXTINGUISH, 0.5f, 1.0f);
         }
     }

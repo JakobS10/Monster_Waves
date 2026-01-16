@@ -12,7 +12,8 @@ import org.bukkit.scheduler.BukkitTask;
 import java.util.*;
 
 /**
- * VERBESSERT:
+ * ERWEITERT:
+ * - Spectators sehen Bossbars der Spieler die sie beobachten
  * - Bossbars werden nach Wave-Complete gecleaned
  * - Mobs spawnen progressiv mit Verzögerung
  * - Spawn-Points werden verteilt
@@ -24,6 +25,9 @@ public class WaveManager {
     private final Map<UUID, Set<UUID>> teamMobs = new HashMap<>();
     private final Map<UUID, BukkitTask> countdownTasks = new HashMap<>();
     private final Map<UUID, UUID> mobToTeam = new HashMap<>();
+
+    // NEU: Tracking welche Spectators welche Bossbars sehen
+    private final Map<UUID, Set<UUID>> spectatorBossbars = new HashMap<>(); // Spectator -> Set<BossBar Owner>
 
     // NEU: Spawn-Tasks für progressive Spawns
     private final Map<UUID, BukkitTask> spawnTasks = new HashMap<>();
@@ -106,7 +110,7 @@ public class WaveManager {
     }
 
     /**
-     * NEU: Spawnt Mobs PROGRESSIV mit verteilten Spawn-Points
+     * Spawnt Mobs PROGRESSIV mit verteilten Spawn-Points
      */
     private void spawnWaveMobsForTeam(UUID teamId, Wave wave) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
@@ -147,7 +151,7 @@ public class WaveManager {
             }
         }
 
-        // NEU: Spawne Mobs PROGRESSIV (alle 2 Sekunden 5 Mobs)
+        // Spawne Mobs PROGRESSIV (alle 2 Sekunden 5 Mobs)
         List<EntityType> mobsToSpawn = new ArrayList<>(wave.getMobs());
         final int[] spawnedCount = {0};
 
@@ -165,7 +169,7 @@ public class WaveManager {
                 for (int i = 0; i < batchSize; i++) {
                     EntityType mobType = mobsToSpawn.get(spawnedCount[0] + i);
 
-                    // NEU: Verteile Spawn-Points
+                    // Verteile Spawn-Points
                     Location spawnLoc = getRandomSpawnPoint(arena);
 
                     Entity entity = targetPlayer.getWorld().spawnEntity(spawnLoc, mobType);
@@ -202,7 +206,7 @@ public class WaveManager {
     }
 
     /**
-     * NEU: Gibt zufälligen Spawn-Point innerhalb der Arena zurück
+     * Gibt zufälligen Spawn-Point innerhalb der Arena zurück
      */
     private Location getRandomSpawnPoint(ArenaInstance arena) {
         Location center = arena.getCenterLocation();
@@ -299,7 +303,7 @@ public class WaveManager {
 
     /**
      * Wave für Team abgeschlossen
-     * NEU: Bossbars werden gecleaned!
+     * NEU: Bossbars werden gecleaned + Spectator-Bossbars entfernt!
      */
     private void onWaveCompletedForTeam(UUID teamId) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
@@ -327,11 +331,14 @@ public class WaveManager {
                 player.sendMessage("§a§l✓ Wave " + (waveIndex + 1) + " abgeschlossen!");
                 player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
 
-                // NEU: Entferne alte Bossbar
+                // NEU: Entferne alte Bossbar (auch von Spectators!)
                 BossBar oldBar = playerBossbars.remove(memberId);
                 if (oldBar != null) {
                     oldBar.removeAll();
                 }
+
+                // NEU: Entferne Spectator-Tracking für diese Bossbar
+                removeSpectatorBossbar(memberId);
             }
         }
 
@@ -345,17 +352,21 @@ public class WaveManager {
             for (UUID memberId : teamMembers) {
                 plugin.getChallengeManager().onPlayerCompleted(memberId);
 
-                // NEU: Final-Bossbar cleanup
+                // NEU: Final-Bossbar cleanup (auch von Spectators!)
                 BossBar bar = playerBossbars.remove(memberId);
                 if (bar != null) {
                     bar.removeAll();
                 }
+
+                // NEU: Final Spectator-Cleanup
+                removeSpectatorBossbar(memberId);
             }
         }
     }
 
     /**
      * Update Bossbar für einzelnen Spieler
+     * NEU: Auch Spectators sehen diese Bossbar!
      */
     private void updateBossbarForPlayer(Player player, Wave wave, int remainingMobs) {
         BossBar bar = playerBossbars.get(player.getUniqueId());
@@ -381,11 +392,68 @@ public class WaveManager {
         bar.setTitle("§cWave " + wave.getWaveNumber() + "§7/§c" + totalWaves + " §7- §e" + remainingMobs + "§7/§e" + totalMobs + " Mobs");
         bar.setProgress(Math.max(0.01, progress));
         bar.setColor(BarColor.RED);
+
+        // NEU: Update auch für Spectators die diesen Spieler beobachten
+        updateSpectatorBossbars(player.getUniqueId(), bar);
+    }
+
+    /**
+     * NEU: Zeigt Spectator die Bossbar eines Spielers an
+     */
+    public void showBossbarToSpectator(Player spectator, UUID targetPlayerId) {
+        BossBar targetBar = playerBossbars.get(targetPlayerId);
+        if (targetBar != null) {
+            targetBar.addPlayer(spectator);
+
+            // Tracking
+            spectatorBossbars.computeIfAbsent(spectator.getUniqueId(), k -> new HashSet<>()).add(targetPlayerId);
+
+            spectator.sendMessage("§7Du siehst jetzt die Wave-Info von §e" + Bukkit.getPlayer(targetPlayerId).getName());
+        }
+    }
+
+    /**
+     * NEU: Entfernt alle Bossbars von einem Spectator
+     */
+    public void hideAllBossbarsFromSpectator(Player spectator) {
+        Set<UUID> watching = spectatorBossbars.remove(spectator.getUniqueId());
+        if (watching != null) {
+            for (UUID targetId : watching) {
+                BossBar bar = playerBossbars.get(targetId);
+                if (bar != null) {
+                    bar.removePlayer(spectator);
+                }
+            }
+        }
+    }
+
+    /**
+     * NEU: Update Spectator-Bossbars wenn sich was ändert
+     */
+    private void updateSpectatorBossbars(UUID playerId, BossBar bar) {
+        // Finde alle Spectators die diesen Spieler beobachten
+        for (Map.Entry<UUID, Set<UUID>> entry : spectatorBossbars.entrySet()) {
+            if (entry.getValue().contains(playerId)) {
+                Player spectator = Bukkit.getPlayer(entry.getKey());
+                if (spectator != null && spectator.isOnline()) {
+                    // Bossbar ist bereits zu diesem Spectator hinzugefügt
+                    // Automatisches Update durch BossBar-API
+                }
+            }
+        }
+    }
+
+    /**
+     * NEU: Entfernt Spectator-Tracking für eine Bossbar
+     */
+    private void removeSpectatorBossbar(UUID playerId) {
+        for (Set<UUID> watching : spectatorBossbars.values()) {
+            watching.remove(playerId);
+        }
     }
 
     /**
      * Stellt den Zustand der Waves für alle Teams wieder her.
-     * @param challenge Die wiederhergestellte Challenge
      */
     public void restoreWavesForTeams(Challenge challenge) {
         for (UUID teamId : challenge.getTeams().keySet()) {
@@ -418,7 +486,7 @@ public class WaveManager {
             task.cancel();
         }
 
-        // NEU: Stoppe Spawn-Tasks
+        // Stoppe Spawn-Tasks
         BukkitTask spawnTask = spawnTasks.remove(teamId);
         if (spawnTask != null) {
             spawnTask.cancel();
@@ -443,12 +511,17 @@ public class WaveManager {
         if (bar != null) {
             bar.removeAll();
         }
+
+        // NEU: Cleanup Spectator-Tracking
+        removeSpectatorBossbar(playerId);
     }
 
     /**
      * Räumt ALLES auf
+     * NEU: Auch Spectator-Bossbars!
      */
     public void cleanupAll() {
+        // Cleanup alle Bossbars (auch von Spectators!)
         for (BossBar bar : new ArrayList<>(playerBossbars.values())) {
             bar.removeAll();
         }
@@ -459,7 +532,7 @@ public class WaveManager {
         }
         countdownTasks.clear();
 
-        // NEU: Cleanup Spawn-Tasks
+        // Cleanup Spawn-Tasks
         for (BukkitTask task : new ArrayList<>(spawnTasks.values())) {
             task.cancel();
         }
@@ -477,6 +550,9 @@ public class WaveManager {
         teamMobs.clear();
         mobToTeam.clear();
 
-        plugin.getLogger().info("[WaveManager] Vollständiges Cleanup durchgeführt");
+        // NEU: Cleanup Spectator-Tracking
+        spectatorBossbars.clear();
+
+        plugin.getLogger().info("[WaveManager] Vollständiges Cleanup durchgeführt (inkl. Spectator-Bossbars)");
     }
 }

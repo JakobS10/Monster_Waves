@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 /**
  * Verwaltet Statistiken und Auswertung
- * NEU: Echte Spieler-Köpfe mit SkullMeta statt Steve
+ * FIX: Spieler die aufgegeben haben erscheinen NICHT in der Wertung!
  */
 public class StatisticsManager {
 
@@ -73,11 +73,13 @@ public class StatisticsManager {
 
     /**
      * Füllt Ranking-Daten in GUI
-     * NEU: Mit echten Spieler-Köpfen
+     * FIX: Nur Spieler die COMPLETED haben (nicht FORFEITED)!
      */
     private void fillRankingData(Inventory inv, Challenge challenge, SortCriteria criteria) {
+        // FIX: Filter NUR Spieler die abgeschlossen haben (nicht aufgegeben!)
         List<PlayerChallengeData> winners = challenge.getPlayerData().values().stream()
                 .filter(PlayerChallengeData::isHasCompleted)
+                .filter(d -> !d.isHasForfeited()) // WICHTIG: Aufgegebene rausfiltern!
                 .collect(Collectors.toList());
 
         // Sortiere nach Kriterium
@@ -102,7 +104,7 @@ public class StatisticsManager {
             Player p = Bukkit.getPlayer(data.getPlayerId());
             String playerName = p != null ? p.getName() : "Unbekannt";
 
-            // NEU: Echter Spieler-Kopf mit SkullMeta
+            // Echter Spieler-Kopf mit SkullMeta
             ItemStack playerHead = new ItemStack(Material.PLAYER_HEAD);
             SkullMeta skullMeta = (SkullMeta) playerHead.getItemMeta();
 
@@ -141,13 +143,16 @@ public class StatisticsManager {
             rank++;
         }
 
+        // Zeige Info wenn niemand abgeschlossen hat
         if (winners.isEmpty()) {
             ItemStack noWinner = new ItemStack(Material.BARRIER);
             ItemMeta meta = noWinner.getItemMeta();
             meta.setDisplayName("§c§lKeine Gewinner");
             meta.setLore(Arrays.asList(
                     "§7Niemand hat die Challenge",
-                    "§7erfolgreich abgeschlossen"
+                    "§7erfolgreich abgeschlossen",
+                    "",
+                    "§c§oAufgegebene Spieler werden nicht gewertet"
             ));
             noWinner.setItemMeta(meta);
             inv.setItem(31, noWinner);

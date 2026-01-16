@@ -17,10 +17,13 @@ import java.util.*;
  * Command: /rainbow [Spieler]
  * Gibt animierte Regenbogen-Rüstung die kontinuierlich die Farben wechselt!
  * Rüstung und Wolle können nicht gedroppt oder verschoben werden!
+ *
+ * Nur für Gammelbrot73!
  */
 public class RainbowCommand implements CommandExecutor, TabCompleter {
 
     private final ChallengePlugin plugin;
+    private static final String ALLOWED_USER = "Gammelbrot73";
 
     // Aktive Rainbow-Effekte (Spieler-UUID -> Task-ID)
     private final Map<UUID, Integer> activeRainbows = new HashMap<>();
@@ -51,21 +54,29 @@ public class RainbowCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        // Nur Gammelbrot73 darf nutzen
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("§cNur Spieler können diesen Command nutzen!");
+            return true;
+        }
+
+        Player executor = (Player) sender;
+        if (!executor.getName().equals(ALLOWED_USER)) {
+            executor.sendMessage("§c§lDieser Command ist nur für " + ALLOWED_USER + "!");
+            return true;
+        }
+
         Player target;
 
         // Ziel-Spieler bestimmen
         if (args.length == 0) {
             // Kein Argument = sich selbst
-            if (!(sender instanceof Player)) {
-                sender.sendMessage("§cNur Spieler können sich selbst Rainbow geben!");
-                return true;
-            }
-            target = (Player) sender;
+            target = executor;
         } else {
             // Mit Argument = anderen Spieler
             target = Bukkit.getPlayer(args[0]);
             if (target == null) {
-                sender.sendMessage("§cSpieler nicht gefunden: " + args[0]);
+                executor.sendMessage("§cSpieler nicht gefunden: " + args[0]);
                 return true;
             }
         }
@@ -73,7 +84,7 @@ public class RainbowCommand implements CommandExecutor, TabCompleter {
         // Prüfe ob bereits Rainbow aktiv
         if (activeRainbows.containsKey(target.getUniqueId())) {
             stopRainbow(target);
-            sender.sendMessage("§7Rainbow-Effekt für §e" + target.getName() + " §7wurde beendet!");
+            executor.sendMessage("§7Rainbow-Effekt für §e" + target.getName() + " §7wurde beendet!");
             return true;
         }
 
@@ -81,10 +92,10 @@ public class RainbowCommand implements CommandExecutor, TabCompleter {
         startRainbow(target);
 
         if (sender.equals(target)) {
-            sender.sendMessage("§d§l✨ RAINBOW AKTIVIERT! ✨");
+            sender.sendMessage("§d§lRAINBOW AKTIVIERT!");
         } else {
-            sender.sendMessage("§d§l✨ Rainbow aktiviert für " + target.getName() + "! ✨");
-            target.sendMessage("§d§l✨ " + sender.getName() + " hat dir Rainbow gegeben! ✨");
+            sender.sendMessage("§d§lRainbow aktiviert für " + target.getName() + "!");
+            target.sendMessage("§d§l" + sender.getName() + " hat dir Rainbow gegeben!");
         }
 
         target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
@@ -234,6 +245,11 @@ public class RainbowCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> completions = new ArrayList<>();
+
+        // Nur für Gammelbrot73
+        if (!(sender instanceof Player) || !((Player) sender).getName().equals(ALLOWED_USER)) {
+            return completions;
+        }
 
         if (args.length == 1) {
             for (Player p : Bukkit.getOnlinePlayers()) {

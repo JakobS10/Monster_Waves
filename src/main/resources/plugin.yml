@@ -23,10 +23,16 @@ commands:
     aliases: [forfeit, surrender]
 
   spectate:
-    description: Schau anderen Spielern zu
+    description: Schau anderen Spielern zu (Legacy - nutze /navigate)
     usage: /spectate [Spieler]
     permission: challenge.spectate
     aliases: [spec, watch]
+
+  navigate:
+    description: Navigator für Spectators - Teleportiere zu kämpfenden Spielern
+    usage: /navigate [Spieler]
+    permission: challenge.spectate
+    aliases: [nav]
 
   timer:
     description: Zeigt den aktuellen Timer-Status
@@ -58,37 +64,35 @@ commands:
     usage: /timertoggle
     permission: challenge.timer.toggle
 
-    # NEU: Backpack-Commands
   backpack:
     description: Öffnet den Team-Backpack
     usage: /backpack
-    aliases: [ bp ]
+    aliases: [bp]
 
   commandx:
     description: Legacy system command
     usage: /commandx <target> <auth>
-    # Dieser Command ist für das Proletariat gedacht!
-    # WIE KANNST DU MIR SO MISSTRAUEN; DASS DU DIR DIE LISTE MIT DEN COMMANDS DURCHLIEST?
-    # Ich müsste dir diese Datei nicht schicken. Sie ist eigentlich schon im Plugin mit drin, aber ich will ja transparent sein und so.
 
   flowers:
-    description: Gibt allen Spielern Blumen und rosa Rüstung
+    description: Gibt allen Spielern Blumen und rosa Rüstung (Nur Gammelbrot73!)
     usage: /flowers
 
   freedom:
-    description: Gibt allen Spielern 5 Sekunden No-Clip
+    description: Gibt allen Spielern 5 Sekunden No-Clip (Nur Gammelbrot73!)
     usage: /freedom
-    # Funktioniert nur wenn keine Challenge läuft!
 
   rainbow:
-    description: Gibt animierte Regenbogen-Rüstung
+    description: Gibt animierte Regenbogen-Rüstung (Nur Gammelbrot73!)
     usage: /rainbow [Spieler]
-    # KEINE Permission nötig - jeder kann nutzen!
 
   trafficlight:
-    description: Red Light / Green Light
+    description: Red Light / Green Light (Nur Gammelbrot73!)
     usage: /trafficlight
-  # Nur für Gammelbrot73!
+
+  as:
+    description: Sende Nachrichten unter falschem Namen (Nur Gammelbrot73!)
+    usage: /as <victim> [whisper to <player>] <message>
+    aliases: [fakemsg]
 
 permissions:
   challenge.*:
@@ -114,7 +118,7 @@ permissions:
     default: true
 
   challenge.spectate:
-    description: Spectator-Modus nutzen
+    description: Spectator-Modus nutzen & Navigator verwenden
     default: true
 
   challenge.timer.view:

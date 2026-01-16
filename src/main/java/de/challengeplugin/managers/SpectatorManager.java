@@ -12,12 +12,10 @@ import org.bukkit.inventory.meta.SkullMeta;
 import java.util.*;
 
 /**
- * ÜBERARBEITET: Verwaltet Spectator-Modus mit Adventure Mode statt Spectator
- * - Adventure Mode
- * - Invincible (unverwundbar)
- * - Fly-Modus
- * - Compass zum Teleportieren
- * - Echte Spieler-Köpfe in GUI
+ * ERWEITERT: Verwaltet ECHTEN Spectator-Modus
+ * - Echter Spectator GameMode
+ * - GUI über /navigate Command (kein Compass mehr)
+ * - NEU: Spectators sehen Bossbars der beobachteten Spieler!
  */
 public class SpectatorManager {
 
@@ -26,41 +24,28 @@ public class SpectatorManager {
     // Tracking für Spectator-Status
     private final Set<UUID> spectators = new HashSet<>();
 
+    // NEU: Tracking welchen Spieler der Spectator gerade beobachtet
+    private final Map<UUID, UUID> spectatorWatching = new HashMap<>();
+
     public SpectatorManager(ChallengePlugin plugin) {
         this.plugin = plugin;
     }
 
     /**
-     * Aktiviert Spectator-Modus für Spieler
-     * NEU: Adventure Mode + Fly + Invincible statt Spectator
+     * Aktiviert ECHTEN Spectator-Modus für Spieler
      */
     public void enableSpectatorMode(Player player) {
-        // Setze Adventure Mode
-        player.setGameMode(GameMode.ADVENTURE);
-
-        // Aktiviere Fly
-        player.setAllowFlight(true);
-        player.setFlying(true);
-
-        // Mache unverwundbar
-        player.setInvulnerable(true);
-
-        // Deaktiviere Kollisionen
-        player.setCollidable(false);
-
-        // Optional: Mache unsichtbar für Mobs
-        player.setInvisible(true);
+        // Setze ECHTEN Spectator Mode
+        player.setGameMode(GameMode.SPECTATOR);
 
         // Tracking
         spectators.add(player.getUniqueId());
 
-        // Gib Compass
-        giveSpectatorCompass(player);
-
-        player.sendMessage("§b§lSpectator-Modus aktiviert!");
-        player.sendMessage("§7Ich hab dir ein paar meiner Superkräfte abgegeben.");
-        player.sendMessage("Du kannst fliegen");
-        player.sendMessage("§7Nutze den Compass um zu Spielern zu teleportieren");
+        player.sendMessage("§b§l=== Spectator-Modus aktiviert ===");
+        player.sendMessage("§7Du kannst nun anderen Spielern zuschauen");
+        player.sendMessage("§7Nutze §e/navigate §7um zu Spielern zu teleportieren");
+        player.sendMessage("");
+        player.sendMessage("§7§oDu siehst dann auch ihre Wave-Fortschritt!");
     }
 
     /**
@@ -68,41 +53,15 @@ public class SpectatorManager {
      */
     public void disableSpectatorMode(Player player) {
         player.setGameMode(GameMode.SURVIVAL);
-        player.setAllowFlight(false);
-        player.setFlying(false);
-        player.setInvulnerable(false);
-        player.setCollidable(true);
-        player.setInvisible(false);
-
         spectators.remove(player.getUniqueId());
 
-        // Entferne Compass
-        player.getInventory().remove(Material.COMPASS);
+        // NEU: Entferne Bossbars
+        hideWaveInfoFromSpectator(player);
+        spectatorWatching.remove(player.getUniqueId());
     }
 
     /**
-     * Gibt Spectator-Compass an Spieler
-     */
-    public void giveSpectatorCompass(Player player) {
-        ItemStack compass = new ItemStack(Material.COMPASS);
-        ItemMeta meta = compass.getItemMeta();
-        meta.setDisplayName("§b§lSpectator-Navigator");
-        meta.setLore(Arrays.asList(
-                "§7Rechtsklick um Spieler-Liste",
-                "§7zu öffnen",
-                "",
-                "§7Teleportiere dich zu kämpfenden",
-                "§7Spielern und schau ihnen zu!"
-        ));
-        compass.setItemMeta(meta);
-
-        player.getInventory().setItem(4, compass); // Slot 5 (Mitte der Hotbar)
-        player.sendMessage("§b§lDu kannst jetzt anderen Spielern zuschauen!");
-    }
-
-    /**
-     * Öffnet Spectator-Auswahl-GUI
-     * NEU: Mit echten Spieler-Köpfen (SkullMeta)
+     * Öffnet Spectator-Auswahl-GUI (über /navigate Command)
      */
     public void openSpectatorGUI(Player spectator) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
@@ -111,7 +70,7 @@ public class SpectatorManager {
             return;
         }
 
-        Inventory inv = Bukkit.createInventory(null, 27, "§b§lSpectator-Modus");
+        Inventory inv = Bukkit.createInventory(null, 27, "§b§lNavigator");
 
         int slot = 0;
         for (UUID playerId : challenge.getParticipants()) {
@@ -123,7 +82,7 @@ public class SpectatorManager {
             Player target = Bukkit.getPlayer(playerId);
             if (target == null) continue;
 
-            // NEU: Echter Spieler-Kopf mit SkullMeta
+            // Echter Spieler-Kopf mit SkullMeta
             ItemStack playerHead = new ItemStack(Material.PLAYER_HEAD);
             SkullMeta skullMeta = (SkullMeta) playerHead.getItemMeta();
 
@@ -134,11 +93,12 @@ public class SpectatorManager {
 
             List<String> lore = new ArrayList<>();
             lore.add("");
-            lore.add("§7Wave: §e" + (data.getCurrentWaveIndex() + 1) + "§7/§e3");
+            lore.add("§7Wave: §e" + (data.getCurrentWaveIndex() + 1));
             lore.add("§7Tode: §c" + data.getTotalDeaths());
             lore.add("§7Health: §c" + String.format("%.1f", target.getHealth()) + "§7/§c20.0 HP");
             lore.add("");
             lore.add("§7Klicke zum Zuschauen");
+            lore.add("§d§o+ Wave-Bossbar wird angezeigt!");
             skullMeta.setLore(lore);
 
             playerHead.setItemMeta(skullMeta);
@@ -166,6 +126,7 @@ public class SpectatorManager {
 
     /**
      * Teleportiert Spectator zu Spieler
+     * NEU: Zeigt auch die Bossbar des Ziels an!
      */
     public void teleportToPlayer(Player spectator, UUID targetPlayerId) {
         Player target = Bukkit.getPlayer(targetPlayerId);
@@ -181,6 +142,37 @@ public class SpectatorManager {
 
         spectator.sendMessage("§aDu schaust jetzt §e" + target.getName() + " §azu!");
         spectator.playSound(spectator.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+
+        // NEU: Zeige Wave-Info (Bossbar)
+        showWaveInfoToSpectator(spectator, targetPlayerId);
+    }
+
+    /**
+     * NEU: Zeigt Spectator die Wave-Bossbar eines Spielers
+     */
+    private void showWaveInfoToSpectator(Player spectator, UUID targetPlayerId) {
+        // Entferne alte Bossbars falls vorhanden
+        hideWaveInfoFromSpectator(spectator);
+
+        // Zeige neue Bossbar
+        plugin.getChallengeManager().getWaveManager()
+                .showBossbarToSpectator(spectator, targetPlayerId);
+
+        // Tracking
+        spectatorWatching.put(spectator.getUniqueId(), targetPlayerId);
+
+        Player target = Bukkit.getPlayer(targetPlayerId);
+        if (target != null) {
+            spectator.sendMessage("§d§o✨ Du siehst jetzt " + target.getName() + "'s Wave-Fortschritt!");
+        }
+    }
+
+    /**
+     * NEU: Entfernt Wave-Info von Spectator
+     */
+    private void hideWaveInfoFromSpectator(Player spectator) {
+        plugin.getChallengeManager().getWaveManager()
+                .hideAllBossbarsFromSpectator(spectator);
     }
 
     /**
@@ -191,15 +183,26 @@ public class SpectatorManager {
     }
 
     /**
+     * NEU: Gibt zurück welchen Spieler der Spectator gerade beobachtet
+     */
+    public UUID getWatchingPlayer(UUID spectatorId) {
+        return spectatorWatching.get(spectatorId);
+    }
+
+    /**
      * Cleanup beim Challenge-Ende
+     * NEU: Auch Bossbars werden entfernt!
      */
     public void cleanup() {
         for (UUID spectatorId : new HashSet<>(spectators)) {
             Player player = Bukkit.getPlayer(spectatorId);
             if (player != null) {
+                // Entferne Bossbars
+                hideWaveInfoFromSpectator(player);
                 disableSpectatorMode(player);
             }
         }
         spectators.clear();
+        spectatorWatching.clear();
     }
 }

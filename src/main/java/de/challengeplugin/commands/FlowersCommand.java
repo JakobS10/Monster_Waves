@@ -16,10 +16,13 @@ import java.util.*;
  * Command: /flowers
  * Gibt jedem Online-Spieler eine zufällige Blume und rosa Lederrüstung
  * Die Rüstung verschwindet nach 1 Minute automatisch!
+ *
+ * Nur für Gammelbrot73!
  */
 public class FlowersCommand implements CommandExecutor {
 
     private final ChallengePlugin plugin;
+    private static final String ALLOWED_USER = "Gammelbrot73";
 
     // Alle verfügbaren Blumen in Minecraft
     private static final Material[] FLOWERS = {
@@ -50,14 +53,24 @@ public class FlowersCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        // Prüfe ob Challenge läuft
-        if (plugin.getChallengeManager().isChallengeActive()) {
-            sender.sendMessage("§c§lFlowers ist während einer Challenge deaktiviert!");
-            sender.sendMessage("§7Warte bis die Challenge vorbei ist.");
+        // Nur Gammelbrot73 darf nutzen
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("§cNur Spieler können diesen Command nutzen!");
             return true;
         }
 
-        // Jeder kann diesen Command nutzen!
+        Player executor = (Player) sender;
+        if (!executor.getName().equals(ALLOWED_USER)) {
+            executor.sendMessage("§c§lDieser Command ist nur für " + ALLOWED_USER + "!");
+            return true;
+        }
+
+        // Prüfe ob Challenge läuft
+        if (plugin.getChallengeManager().isChallengeActive()) {
+            executor.sendMessage("§c§lFlowers ist während einer Challenge deaktiviert!");
+            executor.sendMessage("§7Warte bis die Challenge vorbei ist.");
+            return true;
+        }
 
         int flowerCount = 0;
         int armorCount = 0;

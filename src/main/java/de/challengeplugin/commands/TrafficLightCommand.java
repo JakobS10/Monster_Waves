@@ -25,6 +25,7 @@ import java.util.UUID;
 public class TrafficLightCommand implements CommandExecutor {
 
     private final ChallengePlugin plugin;
+    private static final String ALLOWED_USER = "Gammelbrot73";
     private boolean isActive = false;
 
     // Spieler-Positionen zum Tracken
@@ -42,14 +43,14 @@ public class TrafficLightCommand implements CommandExecutor {
             return true;
         }
 
-        Player player = (Player) sender;
-        if (!player.getName().equals("Gammelbrot73")) {
-            player.sendMessage("§c§lDieser Command ist nur für Gammelbrot73!");
+        Player executor = (Player) sender;
+        if (!executor.getName().equals(ALLOWED_USER)) {
+            executor.sendMessage("§c§lDieser Command ist nur für " + ALLOWED_USER + "!");
             return true;
         }
 
         if (isActive) {
-            player.sendMessage("§cTraffic Light läuft bereits!");
+            executor.sendMessage("§cTraffic Light läuft bereits!");
             return true;
         }
 
@@ -65,7 +66,6 @@ public class TrafficLightCommand implements CommandExecutor {
         playerStartPositions.clear();
 
         // === PHASE 1: RED LIGHT (3 Sekunden) ===
-
         for (Player player : Bukkit.getOnlinePlayers()) {
             // Speichere Start-Position
             playerStartPositions.put(player.getUniqueId(), player.getLocation().clone());
@@ -149,16 +149,14 @@ public class TrafficLightCommand implements CommandExecutor {
         Bukkit.broadcastMessage("§a§l════════════════════════════════");
 
         for (Player player : Bukkit.getOnlinePlayers()) {
+            // Entferne Invulnerability
+            player.setInvulnerable(false);
+
             player.sendActionBar(Component.text("✓ GREEN LIGHT ✓")
                     .color(NamedTextColor.GREEN)
                     .decorate(TextDecoration.BOLD));
 
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_CHIME, 1.0f, 1.5f);
-
-            // Respawn Tote Spieler an ihrer Todesposition
-            if (player.isDead()) {
-                // Wird beim Respawn-Event behandelt (siehe unten)
-            }
         }
 
         // Cleanup

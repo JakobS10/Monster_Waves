@@ -16,10 +16,13 @@ import java.util.UUID;
  * Command: /freedom
  * Gibt allen Spielern für 5 Sekunden Spectator-Mode (No-Clip)
  * Funktioniert NUR wenn keine Challenge läuft!
+ *
+ * Nur für Gammelbrot73!
  */
 public class FreedomCommand implements CommandExecutor {
 
     private final ChallengePlugin plugin;
+    private static final String ALLOWED_USER = "Gammelbrot73";
 
     // Tracke originale GameModes
     private final Map<UUID, GameMode> originalGameModes = new HashMap<>();
@@ -34,32 +37,36 @@ public class FreedomCommand implements CommandExecutor {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        // Nur Spieler können ausführen
+        // Nur Gammelbrot73 darf nutzen
         if (!(sender instanceof Player)) {
             sender.sendMessage("§cNur Spieler können diesen Command nutzen!");
             return true;
         }
 
-        Player player = (Player) sender;
+        Player executor = (Player) sender;
+        if (!executor.getName().equals(ALLOWED_USER)) {
+            executor.sendMessage("§c§lDieser Command ist nur für " + ALLOWED_USER + "!");
+            return true;
+        }
 
         // Prüfe ob Challenge läuft
         if (plugin.getChallengeManager().isChallengeActive()) {
-            player.sendMessage("§c§lFreedom ist während einer Challenge deaktiviert!");
-            player.sendMessage("§7Warte bis die Challenge vorbei ist.");
+            executor.sendMessage("§c§lFreedom ist während einer Challenge deaktiviert!");
+            executor.sendMessage("§7Warte bis die Challenge vorbei ist.");
             return true;
         }
 
         // Prüfe Cooldown
-        if (cooldowns.containsKey(player.getUniqueId())) {
-            long timeLeft = (cooldowns.get(player.getUniqueId()) + COOLDOWN_TIME) - System.currentTimeMillis();
+        if (cooldowns.containsKey(executor.getUniqueId())) {
+            long timeLeft = (cooldowns.get(executor.getUniqueId()) + COOLDOWN_TIME) - System.currentTimeMillis();
             if (timeLeft > 0) {
-                player.sendMessage("§cCooldown! Warte noch §e" + (timeLeft / 1000) + "§c Sekunden.");
+                executor.sendMessage("§cCooldown! Warte noch §e" + (timeLeft / 1000) + "§c Sekunden.");
                 return true;
             }
         }
 
         // Setze Cooldown
-        cooldowns.put(player.getUniqueId(), System.currentTimeMillis());
+        cooldowns.put(executor.getUniqueId(), System.currentTimeMillis());
 
         // Aktiviere Freedom für alle Online-Spieler
         int freedomCount = 0;
@@ -72,7 +79,7 @@ public class FreedomCommand implements CommandExecutor {
         // Broadcast
         Bukkit.broadcastMessage("§b§lFREEDOM AKTIVIERT!");
         Bukkit.broadcastMessage("§7" + freedomCount + " Spieler können nun 5 Sekunden lang fliegen!");
-        Bukkit.broadcastMessage("§7Aktiviert von: §e" + player.getName());
+        Bukkit.broadcastMessage("§7Absolut überhaupt gar nicht aktiviert von: §e" + executor.getName());
 
         // Sound für alle
         for (Player p : Bukkit.getOnlinePlayers()) {

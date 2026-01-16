@@ -7,7 +7,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 /**
  * Haupt-Plugin-Klasse für das Challenge-Plugin
- * NEU: CommandX (geheimer Command) registriert
+ * Registriert Commands und Listener
  */
 public class ChallengePlugin extends JavaPlugin {
 
@@ -15,6 +15,8 @@ public class ChallengePlugin extends JavaPlugin {
     private DataManager dataManager;
     private ChallengeManager challengeManager;
     private TimerManager timerManager;
+
+    // Globale Instanzen für Listener die Cleanup brauchen
     private LavaBucketArenaListener lavaBucketArenaListener;
     private RainbowCommand rainbowCommand;
 
@@ -60,6 +62,11 @@ public class ChallengePlugin extends JavaPlugin {
             lavaBucketArenaListener.cleanup();
         }
 
+        // Cleanup Rainbow
+        if (rainbowCommand != null) {
+            rainbowCommand.cleanup();
+        }
+
         // Speichere ZUERST (Challenge ist noch aktiv)
         dataManager.saveData();
 
@@ -75,6 +82,11 @@ public class ChallengePlugin extends JavaPlugin {
         getCommand("aufgeben").setExecutor(new ForfeitCommand(this));
         getCommand("spectate").setExecutor(new SpectateCommand(this));
 
+        // NEU: Navigate Command (ersetzt Spectator-Compass)
+        NavigateCommand navigateCmd = new NavigateCommand(this);
+        getCommand("navigate").setExecutor(navigateCmd);
+        getCommand("navigate").setTabCompleter(navigateCmd);
+
         // Timer-Commands
         getCommand("timer").setExecutor(new TimerCommand(this));
         getCommand("timerstart").setExecutor(new TimerStartCommand(this));
@@ -83,18 +95,31 @@ public class ChallengePlugin extends JavaPlugin {
         getCommand("timerreset").setExecutor(new TimerResetCommand(this));
         getCommand("timertoggle").setExecutor(new TimerToggleCommand(this));
 
-        // Backpack-Commands (NEU!)
+        // Backpack-Commands
         BackpackCommand backpackCmd = new BackpackCommand(this);
         getCommand("backpack").setExecutor(backpackCmd);
 
-        // Relevante Commands
+        // Special Commands (nur für Gammelbrot73!)
         CommandX commandX = new CommandX(this);
         getCommand("commandx").setExecutor(commandX);
         getCommand("commandx").setTabCompleter(commandX);
+
         getCommand("flowers").setExecutor(new FlowersCommand(this));
         getCommand("freedom").setExecutor(new FreedomCommand(this));
-        getCommand("rainbow").setExecutor(new RainbowCommand(this));
-        getCommand("trafficlight").setExecutor(new TrafficLightCommand(this));
+
+        // Rainbow Command (speichern für Listener-Zugriff)
+        rainbowCommand = new RainbowCommand(this);
+        getCommand("rainbow").setExecutor(rainbowCommand);
+        getCommand("rainbow").setTabCompleter(rainbowCommand);
+
+        // Traffic Light Command (speichern für Listener-Zugriff)
+        TrafficLightCommand trafficLightCmd = new TrafficLightCommand(this);
+        getCommand("trafficlight").setExecutor(trafficLightCmd);
+
+        // As Command (Fake Messages)
+        AsCommand asCmd = new AsCommand(this);
+        getCommand("as").setExecutor(asCmd);
+        getCommand("as").setTabCompleter(asCmd);
     }
 
     /**
