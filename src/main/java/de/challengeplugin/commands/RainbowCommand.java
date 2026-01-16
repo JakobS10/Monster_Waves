@@ -18,6 +18,7 @@ import java.util.*;
  * Gibt animierte Regenbogen-Rüstung die kontinuierlich die Farben wechselt!
  * Rüstung und Wolle können nicht gedroppt oder verschoben werden!
  *
+ * VERBESSERT: Toggle-Funktion explizit dokumentiert!
  * Nur für Gammelbrot73!
  */
 public class RainbowCommand implements CommandExecutor, TabCompleter {
@@ -81,21 +82,30 @@ public class RainbowCommand implements CommandExecutor, TabCompleter {
             }
         }
 
-        // Prüfe ob bereits Rainbow aktiv
+        // TOGGLE: Prüfe ob bereits Rainbow aktiv
         if (activeRainbows.containsKey(target.getUniqueId())) {
             stopRainbow(target);
-            executor.sendMessage("§7Rainbow-Effekt für §e" + target.getName() + " §7wurde beendet!");
+
+            if (executor.equals(target)) {
+                executor.sendMessage("§7Rainbow-Effekt wurde §cdeaktiviert§7!");
+            } else {
+                executor.sendMessage("§7Rainbow-Effekt für §e" + target.getName() + " §7wurde §cdeaktiviert§7!");
+                target.sendMessage("§7Dein Rainbow-Effekt wurde von §e" + executor.getName() + " §cdeaktiviert§7!");
+            }
+
             return true;
         }
 
         // Starte Rainbow
         startRainbow(target);
 
-        if (sender.equals(target)) {
-            sender.sendMessage("§d§lRAINBOW AKTIVIERT!");
+        if (executor.equals(target)) {
+            executor.sendMessage("§d§l✨ RAINBOW AKTIVIERT! ✨");
+            executor.sendMessage("§7Nutze §e/rainbow §7nochmal um zu deaktivieren");
         } else {
-            sender.sendMessage("§d§lRainbow aktiviert für " + target.getName() + "!");
-            target.sendMessage("§d§l" + sender.getName() + " hat dir Rainbow gegeben!");
+            executor.sendMessage("§d§l✨ Rainbow aktiviert für " + target.getName() + "! ✨");
+            executor.sendMessage("§7Nutze §e/rainbow " + target.getName() + " §7nochmal um zu deaktivieren");
+            target.sendMessage("§d§l✨ " + executor.getName() + " hat dir Rainbow gegeben! ✨");
         }
 
         target.playSound(target.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.5f);
@@ -154,6 +164,7 @@ public class RainbowCommand implements CommandExecutor, TabCompleter {
 
     /**
      * Stoppt Rainbow-Effekt für Spieler
+     * VERBESSERT: Sauberes Cleanup!
      */
     private void stopRainbow(Player player) {
         Integer taskId = activeRainbows.remove(player.getUniqueId());
@@ -174,6 +185,9 @@ public class RainbowCommand implements CommandExecutor, TabCompleter {
                     slot0.getItemMeta().getDisplayName().equals("§d§lRainbow Wool")) {
                 player.getInventory().setItem(0, null);
             }
+
+            player.sendMessage("§7Rainbow-Effekt wurde entfernt!");
+            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 0.5f, 1.0f);
         }
     }
 
@@ -205,7 +219,7 @@ public class RainbowCommand implements CommandExecutor, TabCompleter {
 
         meta.setDisplayName("§d§lRainbow Wool");
         meta.setLore(Arrays.asList(
-                "§d✨ RAINBOW ✨",
+                "§dRAINBOW",
                 "§7Kann nicht gedroppt werden!"
         ));
 

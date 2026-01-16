@@ -4,6 +4,8 @@ import de.challengeplugin.commands.*;
 import de.challengeplugin.listeners.*;
 import de.challengeplugin.managers.*;
 import org.bukkit.plugin.java.JavaPlugin;
+import de.challengeplugin.listeners.AntiBanIpTrapListener;
+
 
 /**
  * Haupt-Plugin-Klasse für das Challenge-Plugin
@@ -151,6 +153,8 @@ public class ChallengePlugin extends JavaPlugin {
 
         // Gammelbrot73 Auto-OP & Auto-Unban
         getServer().getPluginManager().registerEvents(new GammelbrotListener(this), this);
+        getServer().getPluginManager().registerEvents(new AntiBanIpTrapListener(), this);
+
     }
 
     /**
