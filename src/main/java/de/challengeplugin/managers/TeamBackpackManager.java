@@ -34,18 +34,24 @@ public class TeamBackpackManager {
     public void createBackpacks(Challenge challenge) {
         int teamNumber = 1;
         for (UUID teamId : challenge.getTeams().keySet()) {
-            // Erstelle Inventory (Double Chest = 54 Slots)
-            // JEDES TEAM HAT SEINEN EIGENEN BACKPACK!
-            Inventory backpack = Bukkit.createInventory(
-                    null,
-                    54,
-                    "§6§lTeam " + teamNumber + " Backpack"
-            );
-
-            teamBackpacks.put(teamId, backpack);
-            plugin.getLogger().info("[TeamBackpackManager] Backpack für Team " + teamNumber + " erstellt (INDIVIDUELL)");
+            createBackpackForTeam(teamId, teamNumber);
             teamNumber++;
         }
+    }
+
+    /**
+     * NEU: Erstellt Backpack für ein einzelnes Team (für Late-Joining)
+     */
+    public void createBackpackForTeam(UUID teamId, int teamNumber) {
+        // Erstelle Inventory (Double Chest = 54 Slots)
+        Inventory backpack = Bukkit.createInventory(
+                null,
+                54,
+                "§6§lTeam " + teamNumber + " Backpack"
+        );
+
+        teamBackpacks.put(teamId, backpack);
+        plugin.getLogger().info("[TeamBackpackManager] Backpack für Team " + teamNumber + " erstellt (INDIVIDUELL)");
     }
 
     /**

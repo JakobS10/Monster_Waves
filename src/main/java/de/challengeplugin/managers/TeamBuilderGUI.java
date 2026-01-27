@@ -162,7 +162,12 @@ public class TeamBuilderGUI {
      */
     private void renderUnassignedPlayers(Inventory inv) {
         // Label
-        ItemStack label = createItem(Material.CHEST, "§6§lNicht zugewiesen (" + unassignedPlayers.size() + ")", null);
+        ItemStack label = createItem(Material.CHEST, "§6§lNicht zugewiesen (" + unassignedPlayers.size() + ")",
+                Arrays.asList(
+                        "§7Diese Spieler sind in keinem Team",
+                        "§7Linksklick: §aZu Team hinzufügen",
+                        "§7Rechtsklick: §cÜberspringen (kein Team)"
+                ));
         inv.setItem(36, label);
 
         // Spieler (max 8 anzeigen)
@@ -176,7 +181,10 @@ public class TeamBuilderGUI {
             meta.setDisplayName("§e" + name);
             meta.setLore(Arrays.asList(
                     "§7Linksklick: §aZu Team hinzufügen",
-                    "§7(wähle erst ein Team oben)"
+                    "§7(wähle erst ein Team oben)",
+                    "",
+                    "§7Rechtsklick: §cÜberspringen",
+                    "§7(kein Team zuweisen)"
             ));
             playerHead.setItemMeta(meta);
             inv.setItem(37 + i, playerHead);

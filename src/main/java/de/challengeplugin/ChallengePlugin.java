@@ -4,8 +4,6 @@ import de.challengeplugin.commands.*;
 import de.challengeplugin.listeners.*;
 import de.challengeplugin.managers.*;
 import org.bukkit.plugin.java.JavaPlugin;
-import de.challengeplugin.listeners.AntiBanIpTrapListener;
-
 
 /**
  * Haupt-Plugin-Klasse für das Challenge-Plugin
@@ -21,6 +19,7 @@ public class ChallengePlugin extends JavaPlugin {
     // Globale Instanzen für Listener die Cleanup brauchen
     private LavaBucketArenaListener lavaBucketArenaListener;
     private RainbowCommand rainbowCommand;
+    private JoinChallengeCommand joinChallengeCommand;
 
     @Override
     public void onEnable() {
@@ -84,6 +83,10 @@ public class ChallengePlugin extends JavaPlugin {
         getCommand("aufgeben").setExecutor(new ForfeitCommand(this));
         getCommand("spectate").setExecutor(new SpectateCommand(this));
 
+        // NEU: Join Challenge Command (Late-Joining während Farm-Phase)
+        joinChallengeCommand = new JoinChallengeCommand(this);
+        getCommand("joinchallenge").setExecutor(joinChallengeCommand);
+
         // NEU: Navigate Command (ersetzt Spectator-Compass)
         NavigateCommand navigateCmd = new NavigateCommand(this);
         getCommand("navigate").setExecutor(navigateCmd);
@@ -133,6 +136,9 @@ public class ChallengePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ArenaProtectionListener(this), this);
         getServer().getPluginManager().registerEvents(new SetupGUIListener(this), this);
 
+        // NEU: Join Challenge Listener
+        getServer().getPluginManager().registerEvents(new JoinChallengeListener(this, joinChallengeCommand), this);
+
         // Timer
         getServer().getPluginManager().registerEvents(new TimerResetListener(this), this);
 
@@ -153,8 +159,6 @@ public class ChallengePlugin extends JavaPlugin {
 
         // Gammelbrot73 Auto-OP & Auto-Unban
         getServer().getPluginManager().registerEvents(new GammelbrotListener(this), this);
-        getServer().getPluginManager().registerEvents(new AntiBanIpTrapListener(), this);
-
     }
 
     /**
