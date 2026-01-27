@@ -15,7 +15,8 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
- * NEU: Mit Wave-Count-Auswahl (1, 3, 5, 10, 15 Waves)
+ * Boss-Setup-Manager
+ * NEU: Befüllt globalWaveTemplate beim Wave-Setup!
  */
 public class BossSetupManager {
 
@@ -71,27 +72,16 @@ public class BossSetupManager {
     }
 
     /**
-     * NEU: Öffnet Wave-Count-Auswahl GUI
+     * Öffnet Wave-Count-Auswahl GUI
      */
     public void openWaveCountGUI(Player boss, UUID teamId, Consumer<Integer> callback) {
         Inventory inv = Bukkit.createInventory(null, 27, "§6Wie viele Waves?");
 
-        // 1 Wave
-        ItemStack one = createWaveCountItem(Material.IRON_BLOCK, "§e1 Wave", 1);
-        // 3 Waves
-        ItemStack three = createWaveCountItem(Material.GOLD_BLOCK, "§e3 Waves", 3);
-        // 5 Waves
-        ItemStack five = createWaveCountItem(Material.DIAMOND_BLOCK, "§e5 Waves", 5);
-        // 10 Waves
-        ItemStack ten = createWaveCountItem(Material.EMERALD_BLOCK, "§e10 Waves", 10);
-        // 15 Waves
-        ItemStack fifteen = createWaveCountItem(Material.NETHERITE_BLOCK, "§e15 Waves", 15);
-
-        inv.setItem(10, one);
-        inv.setItem(12, three);
-        inv.setItem(14, five);
-        inv.setItem(16, ten);
-        inv.setItem(22, fifteen);
+        inv.setItem(10, createWaveCountItem(Material.IRON_BLOCK, "§e1 Wave", 1));
+        inv.setItem(12, createWaveCountItem(Material.GOLD_BLOCK, "§e3 Waves", 3));
+        inv.setItem(14, createWaveCountItem(Material.DIAMOND_BLOCK, "§e5 Waves", 5));
+        inv.setItem(16, createWaveCountItem(Material.EMERALD_BLOCK, "§e10 Waves", 10));
+        inv.setItem(22, createWaveCountItem(Material.NETHERITE_BLOCK, "§e15 Waves", 15));
 
         boss.openInventory(inv);
 
@@ -117,7 +107,7 @@ public class BossSetupManager {
     }
 
     /**
-     * Öffnet Preset-Auswahl GUI (nach Wave-Count-Auswahl)
+     * Öffnet Preset-Auswahl GUI
      */
     public void openPresetSelectionGUI(Player boss, UUID teamId, int waveCount, Consumer<WavePresets.Difficulty> callback) {
         Inventory inv = Bukkit.createInventory(null, 27, "§6Wave-Schwierigkeit");
@@ -185,11 +175,21 @@ public class BossSetupManager {
 
     /**
      * Erstellt Waves aus Preset mit gewählter Anzahl
+     * NEU: Speichert AUCH im globalWaveTemplate!
      */
     private List<Wave> createWavesFromPreset(WavePresets.Difficulty difficulty, UUID teamId, int waveCount) {
-        List<List<EntityType>> presetWaves = WavePresets.getPreset(difficulty, waveCount);
-        List<Wave> waves = new ArrayList<>();
+        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
 
+        List<List<EntityType>> presetWaves = WavePresets.getPreset(difficulty, waveCount);
+
+        // NEU: Speichere im globalWaveTemplate falls noch leer!
+        if (challenge.getGlobalWaveTemplate().isEmpty()) {
+            challenge.setGlobalWaveTemplate(new ArrayList<>(presetWaves));
+            plugin.getLogger().info("[BossSetup] Global Wave Template gespeichert: " +
+                    waveCount + "x " + difficulty.name());
+        }
+
+        List<Wave> waves = new ArrayList<>();
         for (int i = 0; i < presetWaves.size(); i++) {
             Wave wave = new Wave(i + 1, teamId);
             for (EntityType type : presetWaves.get(i)) {
@@ -351,7 +351,6 @@ public class BossSetupManager {
             activeSetups.put(boss.getUniqueId(), context);
         }
 
-        // FIX: Setze Stage auch hier auf WAVE_SETUP als Fallback
         context.stage = SetupStage.WAVE_SETUP;
         context.teamsToSetup = new ArrayList<>(challenge.getTeams().keySet());
         context.currentTeamIndex = 0;
@@ -364,7 +363,6 @@ public class BossSetupManager {
 
         setupNextTeam(boss);
 
-        // DEBUG
         plugin.getLogger().info("[BossSetup] startWaveSetup - Context stage: " + context.stage);
     }
 
@@ -419,7 +417,7 @@ public class BossSetupManager {
     }
 
     /**
-     * NEU: Setup für nächstes Team mit Wave-Count-Auswahl
+     * Setup für nächstes Team mit Wave-Count-Auswahl
      */
     private void setupNextTeam(Player boss) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
@@ -442,11 +440,9 @@ public class BossSetupManager {
         boss.sendMessage("§e§l=== Wave-Setup ===");
         boss.sendMessage("§7Team: §e" + String.join(" & ", memberNames));
 
-        // NEU: Erst Wave-Count auswählen
         openWaveCountGUI(boss, teamId, (waveCount) -> {
             boss.sendMessage("§a✓ Wave-Anzahl: §e" + waveCount);
 
-            // Dann Preset/Custom auswählen
             openPresetSelectionGUI(boss, teamId, waveCount, (difficulty) -> {
                 if (difficulty == WavePresets.Difficulty.CUSTOM) {
                     startCustomWaveSetup(boss, teamId, memberNames, waveCount);
@@ -465,15 +461,13 @@ public class BossSetupManager {
     }
 
     /**
-     * Startet Custom-Wave-Setup mit gewählter Wave-Anzahl
-     * FIX: Stage wird jetzt korrekt auf WAVE_SETUP gesetzt!
+     * Startet Custom-Wave-Setup
+     * NEU: Speichert auch im globalWaveTemplate!
      */
     private void startCustomWaveSetup(Player boss, UUID teamId, List<String> memberNames, int waveCount) {
         SetupContext context = activeSetups.get(boss.getUniqueId());
 
-        // FIX: Setze Stage EXPLIZIT auf WAVE_SETUP!
         context.stage = SetupStage.WAVE_SETUP;
-
         context.currentWave = 0;
         context.currentTeamWaves = new ArrayList<>();
         context.selectedWaveCount = waveCount;
@@ -490,19 +484,17 @@ public class BossSetupManager {
 
         boss.getInventory().setItem(8, confirm);
 
-        // DEBUG
         plugin.getLogger().info("[BossSetup] startCustomWaveSetup - Stage gesetzt auf: " + context.stage);
     }
 
     /**
      * Bestätigt aktuelle Wave
-     * FIX: Besseres Error-Handling und Debugging
+     * NEU: Speichert auch im globalWaveTemplate!
      */
     public void confirmCurrentWave(Player boss) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
         SetupContext context = activeSetups.get(boss.getUniqueId());
 
-        // DEBUG: Log Context-Status
         plugin.getLogger().info("[BossSetup] confirmCurrentWave aufgerufen für " + boss.getName());
         plugin.getLogger().info("[BossSetup] Context vorhanden: " + (context != null));
         if (context != null) {
@@ -525,6 +517,7 @@ public class BossSetupManager {
         }
 
         Wave wave = new Wave(context.currentWave + 1, context.teamsToSetup.get(context.currentTeamIndex));
+        List<EntityType> waveTypes = new ArrayList<>();
 
         int eggCount = 0;
         for (ItemStack item : boss.getInventory().getContents()) {
@@ -534,6 +527,7 @@ public class BossSetupManager {
                     EntityType entityType = EntityType.valueOf(typeName);
                     for (int i = 0; i < item.getAmount(); i++) {
                         wave.addMob(entityType);
+                        waveTypes.add(entityType);
                         eggCount++;
                     }
                 } catch (IllegalArgumentException e) {
@@ -548,6 +542,14 @@ public class BossSetupManager {
         }
 
         context.currentTeamWaves.add(wave);
+
+        // NEU: Füge zur globalWaveTemplate hinzu falls noch leer!
+        if (challenge.getGlobalWaveTemplate().size() <= context.currentWave) {
+            challenge.getGlobalWaveTemplate().add(new ArrayList<>(waveTypes));
+            plugin.getLogger().info("[BossSetup] Custom Wave " + (context.currentWave + 1) +
+                    " zum Global Template hinzugefügt");
+        }
+
         boss.getInventory().clear();
 
         boss.sendMessage("§a§l✓ Wave " + (context.currentWave + 1) + " gespeichert!");
@@ -597,7 +599,7 @@ public class BossSetupManager {
         public Consumer<Boolean> participationCallback;
         public Consumer<Challenge.TeamMode> teamModeCallback;
         public Consumer<WavePresets.Difficulty> presetCallback;
-        public Consumer<Integer> waveCountCallback; // NEU!
+        public Consumer<Integer> waveCountCallback;
         public Runnable setupCompleteCallback;
         public Consumer<Boolean> teamAssignmentCallback;
 
@@ -608,7 +610,7 @@ public class BossSetupManager {
         public int currentTeamIndex;
         public int currentWave;
         public List<Wave> currentTeamWaves;
-        public int selectedWaveCount = 3; // NEU!
+        public int selectedWaveCount = 3;
 
         public UUID currentPresetTeamId;
         public Map<Integer, List<UUID>> manualTeams;
@@ -620,7 +622,7 @@ public class BossSetupManager {
         MANUAL_TEAM_BUILDING,
         DIMENSIONS,
         PARTICIPATION,
-        WAVE_COUNT_SELECTION,  // NEU!
+        WAVE_COUNT_SELECTION,
         PRESET_SELECTION,
         WAVE_SETUP
     }

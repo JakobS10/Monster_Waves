@@ -1,9 +1,12 @@
 package de.challengeplugin.models;
 
+import org.bukkit.entity.EntityType;
 import java.util.*;
 
 /**
  * Repräsentiert eine laufende Challenge-Instanz
+ *
+ * NEU: Speichert globale Wave-Templates für Late-Joiner!
  */
 public class Challenge {
 
@@ -27,14 +30,19 @@ public class Challenge {
     private Set<UUID> participants;
     private Map<UUID, PlayerChallengeData> playerData;
 
-    // Wave-Definitionen (NEU: Pro Team statt pro Spieler!)
-    private Map<UUID, List<Wave>> teamWaves; // Team-ID -> 3 Waves
+    // Wave-Definitionen (Pro Team)
+    private Map<UUID, List<Wave>> teamWaves; // Team-ID -> Waves
+
+    // NEU: Globale Wave-Templates für Late-Joiner!
+    // Diese Liste enthält die "Master"-Waves die beim Setup definiert wurden
+    // Neue Teams bekommen eine Kopie dieser Waves
+    private List<List<EntityType>> globalWaveTemplate;
 
     // Status
     private ChallengePhase currentPhase;
     private long phaseStartTick;
 
-    // Arenen (NEU: Pro Team!)
+    // Arenen (Pro Team)
     private Map<UUID, UUID> teamArenaMapping; // Team-ID -> ArenaInstance-ID
 
     public enum ChallengePhase {
@@ -73,6 +81,7 @@ public class Challenge {
         this.playerToTeam = new HashMap<>();
         this.currentPhase = ChallengePhase.SETUP;
         this.teamMode = TeamMode.SOLO; // Standard
+        this.globalWaveTemplate = new ArrayList<>(); // NEU!
     }
 
     // Konstruktor mit Parametern
@@ -89,7 +98,7 @@ public class Challenge {
     }
 
     /**
-     * NEU: Erstellt Teams basierend auf TeamMode
+     * Erstellt Teams basierend auf TeamMode
      */
     public void createTeams() {
         teams.clear();
@@ -123,14 +132,38 @@ public class Challenge {
     }
 
     /**
-     * NEU: Gibt Team eines Spielers zurück
+     * NEU: Erstellt Waves für ein Team basierend auf dem globalen Template
+     * Wird für Late-Joiner verwendet!
+     */
+    public void createWavesForTeamFromTemplate(UUID teamId) {
+        if (globalWaveTemplate == null || globalWaveTemplate.isEmpty()) {
+            // Fallback: Wenn kein Template vorhanden, verwende MEDIUM Preset
+            globalWaveTemplate = new ArrayList<>();
+            List<List<EntityType>> mediumWaves = WavePresets.getPreset(WavePresets.Difficulty.MEDIUM, 3);
+            globalWaveTemplate.addAll(mediumWaves);
+        }
+
+        List<Wave> waves = new ArrayList<>();
+        for (int i = 0; i < globalWaveTemplate.size(); i++) {
+            Wave wave = new Wave(i + 1, teamId);
+            for (EntityType type : globalWaveTemplate.get(i)) {
+                wave.addMob(type);
+            }
+            waves.add(wave);
+        }
+
+        teamWaves.put(teamId, waves);
+    }
+
+    /**
+     * Gibt Team eines Spielers zurück
      */
     public UUID getTeamOfPlayer(UUID playerId) {
         return playerToTeam.get(playerId);
     }
 
     /**
-     * NEU: Gibt alle Mitglieder eines Teams zurück
+     * Gibt alle Mitglieder eines Teams zurück
      */
     public List<UUID> getTeamMembers(UUID teamId) {
         return teams.getOrDefault(teamId, new ArrayList<>());
@@ -225,6 +258,15 @@ public class Challenge {
 
     public void setTeamWaves(Map<UUID, List<Wave>> teamWaves) {
         this.teamWaves = teamWaves;
+    }
+
+    // NEU: Global Wave Template Getter/Setter
+    public List<List<EntityType>> getGlobalWaveTemplate() {
+        return globalWaveTemplate;
+    }
+
+    public void setGlobalWaveTemplate(List<List<EntityType>> globalWaveTemplate) {
+        this.globalWaveTemplate = globalWaveTemplate;
     }
 
     public Map<UUID, UUID> getTeamArenaMapping() {

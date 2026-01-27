@@ -2,13 +2,10 @@ package de.challengeplugin.commands;
 
 import de.challengeplugin.ChallengePlugin;
 import de.challengeplugin.models.Challenge;
-import de.challengeplugin.models.Wave;
-import de.challengeplugin.models.WavePresets;
 import org.bukkit.*;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -20,7 +17,7 @@ import java.util.*;
  * Erlaubt Late-Joining während der Farm-Phase
  * Spieler können bestehendem Team beitreten, neues Team erstellen oder solo bleiben
  *
- * FIX: Erstellt automatisch Default-Waves für neue Teams!
+ * FIX: Verwendet globales Wave-Template für gleiche Waves!
  */
 public class JoinChallengeCommand implements CommandExecutor {
 
@@ -235,7 +232,7 @@ public class JoinChallengeCommand implements CommandExecutor {
 
     /**
      * Spieler erstellt neues Team
-     * FIX: Erstellt automatisch Default-Waves (3x MEDIUM)!
+     * FIX: Verwendet globales Wave-Template für gleiche Waves wie andere Teams!
      */
     public void createNewTeam(Player player) {
         Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
@@ -258,20 +255,9 @@ public class JoinChallengeCommand implements CommandExecutor {
         // WICHTIG: Team-Color hinzufügen
         plugin.getChallengeManager().getTeamColorManager().addTeamColor(challenge, newTeamId);
 
-        // FIX: Erstelle Default-Waves für das neue Team (3x MEDIUM Waves)
-        List<Wave> defaultWaves = WavePresets.getPreset(WavePresets.Difficulty.MEDIUM, 3);
-        List<Wave> teamWaves = new ArrayList<>();
-
-        for (int i = 0; i < defaultWaves.size(); i++) {
-            Wave wave = new Wave(i + 1, newTeamId);
-            for (EntityType type : defaultWaves.get(i)) {
-                wave.addMob(type);
-            }
-            teamWaves.add(wave);
-        }
-
-        challenge.getTeamWaves().put(newTeamId, teamWaves);
-        plugin.getLogger().info("[JoinChallenge] Default-Waves (3x MEDIUM) erstellt für neues Team");
+        // FIX: Verwende globales Wave-Template für gleiche Waves!
+        challenge.createWavesForTeamFromTemplate(newTeamId);
+        plugin.getLogger().info("[JoinChallenge] Waves aus Global-Template erstellt für neues Team");
 
         // Witzige Broadcast-Nachricht
         String action = "§7hat §bein neues Team erstellt §7(§eTeam " + challenge.getTeams().size() + "§7)!";
@@ -282,7 +268,7 @@ public class JoinChallengeCommand implements CommandExecutor {
         player.sendMessage("§7Andere Spieler können deinem Team beitreten!");
         player.sendMessage("");
         player.sendMessage("§6Nutze §e/backpack §6um auf deinen Team-Backpack zuzugreifen!");
-        player.sendMessage("§d§lWaves: §73x MEDIUM §7(Standard für Late-Joiner)");
+        player.sendMessage("§d§lWaves: §7Gleiche Waves wie andere Teams!");
 
         player.playSound(player.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
     }
