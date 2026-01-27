@@ -8,9 +8,12 @@ import org.bukkit.entity.Player;
 import java.util.*;
 
 /**
+ * @deprecated Dieser Command wurde durch /navigate ersetzt!
+ *
  * Command: /spectate [spieler]
- * Teleportiert zu einem kämpfenden Spieler
+ * VERALTET: Redirected zu /navigate
  */
+@Deprecated
 public class SpectateCommand implements CommandExecutor, TabCompleter {
 
     private final ChallengePlugin plugin;
@@ -27,28 +30,18 @@ public class SpectateCommand implements CommandExecutor, TabCompleter {
         }
 
         Player player = (Player) sender;
-        Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
 
-        if (challenge == null) {
-            player.sendMessage("§cEs läuft keine Challenge!");
-            return true;
-        }
+        // Hinweis auf neuen Command
+        player.sendMessage("§e§l⚠ VERALTET!");
+        player.sendMessage("§7Dieser Command wurde ersetzt durch §e/navigate");
+        player.sendMessage("§7Redirect...");
 
-        // Ohne Argument: Öffne GUI
+        // Redirect zu /navigate
         if (args.length == 0) {
-            plugin.getChallengeManager().getSpectatorManager().openSpectatorGUI(player);
-            return true;
+            Bukkit.dispatchCommand(player, "navigate");
+        } else {
+            Bukkit.dispatchCommand(player, "navigate " + args[0]);
         }
-
-        // Mit Argument: Direkt zu Spieler teleportieren
-        Player target = Bukkit.getPlayer(args[0]);
-        if (target == null) {
-            player.sendMessage("§cSpieler nicht gefunden: " + args[0]);
-            return true;
-        }
-
-        plugin.getChallengeManager().getSpectatorManager()
-                .teleportToPlayer(player, target.getUniqueId());
 
         return true;
     }
@@ -60,7 +53,6 @@ public class SpectateCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             Challenge challenge = plugin.getChallengeManager().getActiveChallenge();
             if (challenge != null) {
-                // Schlage alle kämpfenden Spieler vor
                 for (UUID playerId : challenge.getParticipants()) {
                     Player p = Bukkit.getPlayer(playerId);
                     if (p != null && !challenge.getPlayerData().get(playerId).isHasCompleted()) {

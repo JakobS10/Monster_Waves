@@ -81,13 +81,12 @@ public class ChallengePlugin extends JavaPlugin {
         // Challenge-Commands
         getCommand("challenge").setExecutor(new ChallengeCommand(this));
         getCommand("aufgeben").setExecutor(new ForfeitCommand(this));
-        getCommand("spectate").setExecutor(new SpectateCommand(this));
 
         // NEU: Join Challenge Command (Late-Joining während Farm-Phase)
         joinChallengeCommand = new JoinChallengeCommand(this);
         getCommand("joinchallenge").setExecutor(joinChallengeCommand);
 
-        // NEU: Navigate Command (ersetzt Spectator-Compass)
+        // Navigate Command (ersetzt alten Spectator-Compass UND /spectate!)
         NavigateCommand navigateCmd = new NavigateCommand(this);
         getCommand("navigate").setExecutor(navigateCmd);
         getCommand("navigate").setTabCompleter(navigateCmd);

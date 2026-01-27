@@ -1,5 +1,5 @@
 name: ChallengePlugin
-version: 6.7.787
+version: 6.7.788
 main: de.challengeplugin.ChallengePlugin
 api-version: '1.21'
 author: Der allerechte Intäligäns
@@ -28,17 +28,11 @@ commands:
     permission: challenge.forfeit
     aliases: [forfeit, surrender]
 
-  spectate:
-    description: Schau anderen Spielern zu (Legacy - nutze /navigate)
-    usage: /spectate [Spieler]
-    permission: challenge.spectate
-    aliases: [spec, watch]
-
   navigate:
     description: Navigator für Spectators - Teleportiere zu kämpfenden Spielern
     usage: /navigate [Spieler]
     permission: challenge.spectate
-    aliases: [nav, tp]
+    aliases: [nav, tp, spectate, spec, watch]
 
   timer:
     description: Zeigt den aktuellen Timer-Status

@@ -11,6 +11,7 @@ import java.util.*;
 /**
  * Haupt-Manager für die Challenge-Logik
  * ERWEITERT: Mit vollständigen Restore-Methoden für Server-Neustarts
+ * FIX: Neue teleportPlayerToTeamArena Methode für Late-Joining
  */
 public class ChallengeManager {
 
@@ -172,6 +173,58 @@ public class ChallengeManager {
             // Starte erste Wave für dieses Team
             waveManager.startWaveForTeam(teamId, 0);
         }
+    }
+
+    /**
+     * NEU: Teleportiert Spieler in die Arena seines Teams
+     * Wird für Late-Joining während Combat-Phase genutzt
+     */
+    public void teleportPlayerToTeamArena(Player player, UUID teamId) {
+        if (activeChallenge == null) {
+            player.sendMessage("§cKeine aktive Challenge!");
+            return;
+        }
+
+        // Hole Arena für Team
+        ArenaInstance arena = arenaManager.getArenaForTeam(teamId);
+        if (arena == null) {
+            player.sendMessage("§cKeine Arena für dein Team gefunden!");
+            plugin.getLogger().warning("[ChallengeManager] Keine Arena für Team " + teamId + " gefunden!");
+            return;
+        }
+
+        Location spawnPoint = arena.getSpawnPoint();
+
+        // Speichere Inventar
+        PlayerChallengeData data = activeChallenge.getPlayerData().get(player.getUniqueId());
+        if (data != null) {
+            data.backupInventory(player);
+            data.setCombatStartTick(plugin.getDataManager().getTimerTicks());
+        }
+
+        // Teleportiere
+        player.teleport(spawnPoint);
+        player.setGameMode(GameMode.SURVIVAL);
+
+        player.sendMessage("§c§l=== KAMPFPHASE ===");
+        player.sendMessage("§7Du wurdest in die Arena teleportiert!");
+        player.sendMessage("");
+
+        // Zeige aktuelle Wave-Info
+        if (data != null) {
+            List<Wave> teamWaves = activeChallenge.getTeamWaves().get(teamId);
+            int currentWave = data.getCurrentWaveIndex();
+            int totalWaves = teamWaves != null ? teamWaves.size() : 3;
+
+            player.sendMessage("§7Aktuelle Wave: §e" + (currentWave + 1) + "§7/§e" + totalWaves);
+            player.sendMessage("");
+            player.sendMessage("§eViel Erfolg!");
+        }
+
+        player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+
+        plugin.getLogger().info("[ChallengeManager] Spieler " + player.getName() +
+                " in Team-Arena teleportiert (Late-Join)");
     }
 
     /**
